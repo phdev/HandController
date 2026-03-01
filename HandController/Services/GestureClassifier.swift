@@ -1,101 +1,138 @@
 import Vision
 import CoreGraphics
 
-/// Classifies hand gestures based on joint positions from Vision hand pose detection.
+/// Classifies hand gestures using joint positions and temporal tracking.
 ///
-/// Uses geometric relationships between finger joints (distances, angles, extension states)
-/// to determine which gesture is being performed.
-struct GestureClassifier {
+/// Detects:
+/// - Index finger + thumb pinch (spatial proximity)
+/// - Middle finger + thumb pinch (spatial proximity)
+/// - Wave left/right/up/down (tracked wrist movement over time)
+final class GestureClassifier {
+    private let pinchThreshold: CGFloat = 0.06
+    private let waveMinDisplacement: CGFloat = 0.15
+    private let waveWindowSize = 8
+    private let waveDirectionRatio: CGFloat = 2.0
 
-    func classify(joints: [VNHumanHandPoseObservation.JointName: CGPoint]) -> HandGesture {
-        guard let wrist = joints[.wrist] else { return .unknown }
+    // Track wrist positions per hand for wave detection.
+    // Key is chirality string ("Left" or "Right").
+    private var wristHistory: [String: [(position: CGPoint, time: CFAbsoluteTime)]] = [:]
+    private var lastWaveTime: [String: CFAbsoluteTime] = [:]
+    private let waveCooldown: CFAbsoluteTime = 1.0
 
-        let thumbExtended = isThumbExtended(joints: joints)
-        let indexExtended = isFingerExtended(joints: joints, mcp: .indexMCP, pip: .indexPIP, dip: .indexDIP, tip: .indexTip)
-        let middleExtended = isFingerExtended(joints: joints, mcp: .middleMCP, pip: .middlePIP, dip: .middleDIP, tip: .middleTip)
-        let ringExtended = isFingerExtended(joints: joints, mcp: .ringMCP, pip: .ringPIP, dip: .ringDIP, tip: .ringTip)
-        let littleExtended = isFingerExtended(joints: joints, mcp: .littleMCP, pip: .littlePIP, dip: .littleDIP, tip: .littleTip)
+    /// Classify the gesture for a single detected hand.
+    func classify(hand: DetectedHand) -> HandGesture {
+        let joints = hand.joints
+        let handKey = hand.chirality.rawValue
 
-        let extendedCount = [thumbExtended, indexExtended, middleExtended, ringExtended, littleExtended]
-            .filter { $0 }.count
+        // Check pinch gestures first (instantaneous, no temporal tracking needed)
+        if let pinch = detectPinch(joints: joints) {
+            return pinch
+        }
 
-        // Pinch: thumb tip and index tip are close together
-        if let thumbTip = joints[.thumbTip], let indexTip = joints[.indexTip] {
-            let pinchDistance = distance(thumbTip, indexTip)
-            if pinchDistance < 0.05 && !middleExtended && !ringExtended {
-                return .pinch
+        // Track wrist for wave detection
+        if let wrist = joints[.wrist] {
+            trackWrist(position: wrist, handKey: handKey)
+
+            if let wave = detectWave(handKey: handKey) {
+                return wave
             }
         }
 
-        // Thumbs up: only thumb extended, thumb pointing upward
-        if thumbExtended && !indexExtended && !middleExtended && !ringExtended && !littleExtended {
-            if let thumbTip = joints[.thumbTip], let thumbCMC = joints[.thumbCMC] {
-                if thumbTip.y < thumbCMC.y {
-                    return .thumbsUp
-                } else {
-                    return .thumbsDown
-                }
+        return .none
+    }
+
+    /// Reset tracking state (e.g., when streaming stops).
+    func reset() {
+        wristHistory.removeAll()
+        lastWaveTime.removeAll()
+    }
+
+    // MARK: - Pinch Detection
+
+    private func detectPinch(joints: [VNHumanHandPoseObservation.JointName: CGPoint]) -> HandGesture? {
+        guard let thumbTip = joints[.thumbTip] else { return nil }
+
+        // Index-thumb pinch: thumb tip close to index tip
+        if let indexTip = joints[.indexTip] {
+            let dist = distance(thumbTip, indexTip)
+            if dist < pinchThreshold {
+                return .indexThumbPinch
             }
         }
 
-        // Peace: index and middle extended, others curled
-        if indexExtended && middleExtended && !ringExtended && !littleExtended {
-            return .peace
+        // Middle-thumb pinch: thumb tip close to middle tip
+        if let middleTip = joints[.middleTip] {
+            let dist = distance(thumbTip, middleTip)
+            if dist < pinchThreshold {
+                return .middleThumbPinch
+            }
         }
 
-        // Pointing up: only index extended
-        if indexExtended && !middleExtended && !ringExtended && !littleExtended && !thumbExtended {
-            return .pointingUp
+        return nil
+    }
+
+    // MARK: - Wave Detection
+
+    private func trackWrist(position: CGPoint, handKey: String) {
+        let now = CFAbsoluteTimeGetCurrent()
+        var history = wristHistory[handKey] ?? []
+        history.append((position: position, time: now))
+
+        // Keep only recent entries (last ~0.5 seconds at 24fps ≈ 12 frames)
+        let cutoff = now - 0.6
+        history = history.filter { $0.time > cutoff }
+
+        // Cap at max window size
+        if history.count > waveWindowSize * 2 {
+            history = Array(history.suffix(waveWindowSize * 2))
         }
 
-        // Open hand: all fingers extended
-        if extendedCount >= 4 {
-            return .openHand
+        wristHistory[handKey] = history
+    }
+
+    private func detectWave(handKey: String) -> HandGesture? {
+        guard let history = wristHistory[handKey],
+              history.count >= waveWindowSize else {
+            return nil
         }
 
-        // Fist: no fingers extended
-        if extendedCount <= 1 && !thumbExtended {
-            return .fist
+        // Cooldown: don't fire waves too frequently
+        let now = CFAbsoluteTimeGetCurrent()
+        if let lastWave = lastWaveTime[handKey], now - lastWave < waveCooldown {
+            return nil
         }
 
-        return .unknown
+        // Calculate total displacement from first to last tracked position
+        let first = history.first!.position
+        let last = history.last!.position
+        let dx = last.x - first.x
+        let dy = last.y - first.y
+        let absDx = abs(dx)
+        let absDy = abs(dy)
+
+        // Need significant displacement in one dominant axis
+        let totalDisplacement = max(absDx, absDy)
+        guard totalDisplacement > waveMinDisplacement else { return nil }
+
+        // One axis must dominate to distinguish direction
+        let gesture: HandGesture
+        if absDx > absDy * waveDirectionRatio {
+            gesture = dx > 0 ? .waveRight : .waveLeft
+        } else if absDy > absDx * waveDirectionRatio {
+            // In screen coords: y increases downward
+            gesture = dy > 0 ? .waveDown : .waveUp
+        } else {
+            return nil
+        }
+
+        // Consume the wave: clear history and set cooldown
+        lastWaveTime[handKey] = now
+        wristHistory[handKey] = []
+
+        return gesture
     }
 
     // MARK: - Helpers
-
-    private func isFingerExtended(
-        joints: [VNHumanHandPoseObservation.JointName: CGPoint],
-        mcp: VNHumanHandPoseObservation.JointName,
-        pip: VNHumanHandPoseObservation.JointName,
-        dip: VNHumanHandPoseObservation.JointName,
-        tip: VNHumanHandPoseObservation.JointName
-    ) -> Bool {
-        guard let mcpPt = joints[mcp],
-              let pipPt = joints[pip],
-              let tipPt = joints[tip] else {
-            return false
-        }
-
-        // A finger is extended if the tip is farther from the wrist than the MCP,
-        // and the tip-to-MCP distance is greater than the pip-to-MCP distance.
-        let tipToMcp = distance(tipPt, mcpPt)
-        let pipToMcp = distance(pipPt, mcpPt)
-
-        return tipToMcp > pipToMcp * 1.2
-    }
-
-    private func isThumbExtended(joints: [VNHumanHandPoseObservation.JointName: CGPoint]) -> Bool {
-        guard let cmc = joints[.thumbCMC],
-              let mp = joints[.thumbMP],
-              let tip = joints[.thumbTip] else {
-            return false
-        }
-
-        let tipToCmc = distance(tip, cmc)
-        let mpToCmc = distance(mp, cmc)
-
-        return tipToCmc > mpToCmc * 1.3
-    }
 
     private func distance(_ a: CGPoint, _ b: CGPoint) -> CGFloat {
         hypot(a.x - b.x, a.y - b.y)

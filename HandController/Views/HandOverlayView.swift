@@ -1,62 +1,67 @@
 import SwiftUI
 import Vision
 
-/// Draws hand joint landmarks and connections as an overlay on the camera preview.
+/// Draws hand skeleton overlays (joints + bone connections) for detected hands.
 struct HandOverlayView: View {
     let hands: [DetectedHand]
-    let viewSize: CGSize
 
-    private let jointConnections: [(VNHumanHandPoseObservation.JointName, VNHumanHandPoseObservation.JointName)] = [
-        // Thumb
-        (.wrist, .thumbCMC), (.thumbCMC, .thumbMP), (.thumbMP, .thumbIP), (.thumbIP, .thumbTip),
-        // Index
-        (.wrist, .indexMCP), (.indexMCP, .indexPIP), (.indexPIP, .indexDIP), (.indexDIP, .indexTip),
-        // Middle
-        (.wrist, .middleMCP), (.middleMCP, .middlePIP), (.middlePIP, .middleDIP), (.middleDIP, .middleTip),
-        // Ring
-        (.wrist, .ringMCP), (.ringMCP, .ringPIP), (.ringPIP, .ringDIP), (.ringDIP, .ringTip),
-        // Little
-        (.wrist, .littleMCP), (.littleMCP, .littlePIP), (.littlePIP, .littleDIP), (.littleDIP, .littleTip),
-        // Palm connections
-        (.indexMCP, .middleMCP), (.middleMCP, .ringMCP), (.ringMCP, .littleMCP)
-    ]
+    private let leftHandColor = Color.cyan
+    private let rightHandColor = Color.orange
+    private let jointRadius: CGFloat = 5
+    private let boneWidth: CGFloat = 2.5
 
     var body: some View {
         Canvas { context, size in
             for hand in hands {
-                drawConnections(context: &context, hand: hand, size: size)
-                drawJoints(context: &context, hand: hand, size: size)
+                let color = hand.chirality == .left ? leftHandColor : rightHandColor
+                drawBones(context: &context, hand: hand, size: size, color: color)
+                drawJoints(context: &context, hand: hand, size: size, color: color)
             }
         }
         .allowsHitTesting(false)
     }
 
-    private func drawConnections(context: inout GraphicsContext, hand: DetectedHand, size: CGSize) {
-        for (from, to) in jointConnections {
+    private func drawBones(context: inout GraphicsContext, hand: DetectedHand, size: CGSize, color: Color) {
+        for (from, to) in HandSkeleton.boneConnections {
             guard let fromPt = hand.joints[from],
                   let toPt = hand.joints[to] else { continue }
 
-            let start = scaledPoint(fromPt, in: size)
-            let end = scaledPoint(toPt, in: size)
+            let start = scaled(fromPt, in: size)
+            let end = scaled(toPt, in: size)
 
             var path = Path()
             path.move(to: start)
             path.addLine(to: end)
 
-            context.stroke(path, with: .color(.green.opacity(0.8)), lineWidth: 2)
+            context.stroke(path, with: .color(color.opacity(0.7)), lineWidth: boneWidth)
         }
     }
 
-    private func drawJoints(context: inout GraphicsContext, hand: DetectedHand, size: CGSize) {
-        for (_, point) in hand.joints {
-            let scaled = scaledPoint(point, in: size)
-            let rect = CGRect(x: scaled.x - 4, y: scaled.y - 4, width: 8, height: 8)
-            context.fill(Path(ellipseIn: rect), with: .color(.yellow))
+    private func drawJoints(context: inout GraphicsContext, hand: DetectedHand, size: CGSize, color: Color) {
+        for (jointName, point) in hand.joints {
+            let pos = scaled(point, in: size)
+
+            // Larger dots for fingertips
+            let isTip = [
+                VNHumanHandPoseObservation.JointName.thumbTip,
+                .indexTip, .middleTip, .ringTip, .littleTip
+            ].contains(jointName)
+
+            let radius = isTip ? jointRadius * 1.4 : jointRadius
+            let rect = CGRect(
+                x: pos.x - radius,
+                y: pos.y - radius,
+                width: radius * 2,
+                height: radius * 2
+            )
+
+            // White fill with colored border
+            context.fill(Path(ellipseIn: rect), with: .color(.white))
+            context.stroke(Path(ellipseIn: rect), with: .color(color), lineWidth: 1.5)
         }
     }
 
-    private func scaledPoint(_ point: CGPoint, in size: CGSize) -> CGPoint {
-        // Mirror x-axis for front camera (selfie view)
-        CGPoint(x: (1 - point.x) * size.width, y: point.y * size.height)
+    private func scaled(_ point: CGPoint, in size: CGSize) -> CGPoint {
+        CGPoint(x: point.x * size.width, y: point.y * size.height)
     }
 }

@@ -2,7 +2,52 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>NSCameraUsageDescription</key>
-	<string>HandController needs camera access to detect hand gestures in real-time.</string>
+	<!-- Meta DAT SDK Configuration -->
+	<key>MWDAT</key>
+	<dict>
+		<key>AppLinkURLScheme</key>
+		<string>handcontroller://</string>
+		<key>MetaAppId</key>
+		<string>$(META_APP_ID)</string>
+		<key>ClientToken</key>
+		<string>$(CLIENT_TOKEN)</string>
+		<key>Analytics</key>
+		<dict>
+			<key>OptOut</key>
+			<true/>
+		</dict>
+	</dict>
+
+	<!-- URL Scheme for Meta AI app callback -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>handcontroller</string>
+			</array>
+		</dict>
+	</array>
+
+	<!-- Bluetooth permission (glasses connect via BT) -->
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>HandController needs Bluetooth to connect to Meta AI Glasses.</string>
+
+	<!-- External accessory protocol for Meta glasses -->
+	<key>UISupportedExternalAccessoryProtocols</key>
+	<array>
+		<string>com.meta.ar.wearable</string>
+	</array>
+
+	<!-- Background modes -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>bluetooth-peripheral</string>
+		<string>external-accessory</string>
+	</array>
+
+	<!-- Photo library (for saving captured photos) -->
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Save photos captured from your glasses.</string>
 </dict>
 </plist>
