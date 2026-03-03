@@ -1,14 +1,10 @@
 import SwiftUI
 
-/// Main streaming view: camera feed + hand skeleton overlay + gesture indicators + dashboard selector.
+/// Main streaming view: camera feed + hand skeleton overlay + gesture indicators.
 struct StreamingView: View {
     @ObservedObject var streamVM: StreamViewModel
     @ObservedObject var wearablesVM: WearablesViewModel
     @State private var showDebugPanel = false
-
-    private var dashboard: TVDashboardController {
-        streamVM.dashboardController
-    }
 
     var body: some View {
         ZStack {
@@ -41,12 +37,6 @@ struct StreamingView: View {
             // HUD overlay
             VStack {
                 topBar
-
-                // Dashboard section selector (visible when connected and TV is on)
-                if dashboard.isConnected && dashboard.isTVOn {
-                    dashboardSelector
-                }
-
                 Spacer()
                 gestureIndicators
                 bottomControls
@@ -76,11 +66,6 @@ struct StreamingView: View {
 
             Spacer()
 
-            // Dashboard connection indicator
-            if dashboard.isConnected {
-                dashboardStatusBadge
-            }
-
             // Hands detected
             Label("\(streamVM.detectedHands.count)", systemImage: "hand.raised.fill")
                 .font(.caption)
@@ -100,74 +85,6 @@ struct StreamingView: View {
         }
         .padding(.horizontal)
         .padding(.top, 8)
-    }
-
-    // MARK: - Dashboard Status Badge
-
-    private var dashboardStatusBadge: some View {
-        HStack(spacing: 4) {
-            Image(systemName: dashboard.isTVOn ? "tv.fill" : "tv")
-                .font(.caption2)
-            if dashboard.isFullScreen {
-                Text("Full Screen")
-                    .font(.caption2)
-            }
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 5)
-        .background(
-            dashboard.isTVOn ? Color.green.opacity(0.3) : Color.gray.opacity(0.3),
-            in: Capsule()
-        )
-    }
-
-    // MARK: - Dashboard Section Selector
-
-    private var dashboardSelector: some View {
-        ScrollViewReader { proxy in
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(Array(dashboard.sections.enumerated()), id: \.element.id) { index, section in
-                        let isSelected = index == dashboard.selectedIndex
-                        let baseLineWidth: CGFloat = 1.5
-                        let lineWidth = isSelected ? baseLineWidth * 4 : baseLineWidth
-
-                        HStack(spacing: 6) {
-                            Image(systemName: section.icon)
-                                .font(.caption2)
-                            Text(section.title)
-                                .font(.caption)
-                                .fontWeight(isSelected ? .bold : .regular)
-                        }
-                        .foregroundStyle(isSelected ? .white : .white.opacity(0.6))
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(
-                            isSelected ? Color.blue.opacity(0.3) : Color.clear,
-                            in: RoundedRectangle(cornerRadius: 10)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10)
-                                .stroke(
-                                    isSelected ? Color.blue : Color.white.opacity(0.2),
-                                    lineWidth: lineWidth
-                                )
-                        )
-                        .id(section.id)
-                    }
-                }
-                .padding(.horizontal)
-            }
-            .padding(.top, 8)
-            .animation(.easeInOut(duration: 0.2), value: dashboard.selectedIndex)
-            .onChange(of: dashboard.selectedIndex) { _, newIndex in
-                if newIndex < dashboard.sections.count {
-                    withAnimation {
-                        proxy.scrollTo(dashboard.sections[newIndex].id, anchor: .center)
-                    }
-                }
-            }
-        }
     }
 
     // MARK: - Gesture Indicators
