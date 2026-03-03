@@ -32,6 +32,7 @@ final class StreamViewModel: ObservableObject {
     private let handPoseDetector = HandPoseDetector(maxHands: 2)
     private let gestureClassifier = GestureClassifier()
     let homeCenterClient: HomeCenterClient
+    let dashboardController: TVDashboardController
 
     // MARK: - DAT SDK
 
@@ -61,6 +62,7 @@ final class StreamViewModel: ObservableObject {
     init(wearables: WearablesInterface, homeCenterClient: HomeCenterClient = HomeCenterClient()) {
         self.wearables = wearables
         self.homeCenterClient = homeCenterClient
+        self.dashboardController = TVDashboardController(homeCenterClient: homeCenterClient)
         self.deviceSelector = AutoDeviceSelector(wearables: wearables)
 
         let config = StreamSessionConfig(
@@ -174,6 +176,9 @@ final class StreamViewModel: ObservableObject {
             }
 
             if gesture != .none {
+                // Route gesture through the TV Dashboard controller first
+                dashboardController.handleGesture(gesture)
+
                 let event = GestureEvent(
                     gesture: gesture,
                     hand: hand.chirality.rawValue,

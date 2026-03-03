@@ -17,6 +17,7 @@ struct DebugPanelView: View {
             List {
                 statusSection
                 homeCenterSection
+                tvDashboardSection
                 gestureEventSection
             }
             .navigationTitle("Debug")
@@ -107,6 +108,40 @@ struct DebugPanelView: View {
             }
 
             Text("Events are sent to home-center as notifications via REST API.")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+        }
+    }
+
+    // MARK: - TV Dashboard Section
+
+    private var tvDashboardSection: some View {
+        Section("TV Dashboard Control") {
+            Toggle("Dashboard Connected", isOn: Binding(
+                get: { streamVM.dashboardController.isConnected },
+                set: { streamVM.dashboardController.isConnected = $0 }
+            ))
+
+            if streamVM.dashboardController.isConnected {
+                Toggle("TV Power", isOn: Binding(
+                    get: { streamVM.dashboardController.isTVOn },
+                    set: { streamVM.dashboardController.isTVOn = $0 }
+                ))
+
+                if streamVM.dashboardController.isTVOn {
+                    LabeledContent("Selected Section") {
+                        Text(streamVM.dashboardController.selectedSection?.title ?? "None")
+                            .foregroundStyle(.secondary)
+                    }
+
+                    LabeledContent("Full Screen") {
+                        Text(streamVM.dashboardController.isFullScreen ? "Yes" : "No")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+
+            Text("Enable to control the Family TV Dashboard via hand gestures. Wave left/right to navigate sections, index pinch to open, middle pinch to go back or power on.")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
         }

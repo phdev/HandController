@@ -71,6 +71,60 @@ actor HomeCenterClient {
         }
     }
 
+    /// Send a TV Dashboard navigation command to home-center.
+    @discardableResult
+    func sendNavigationCommand(action: DashboardAction, sectionId: String? = nil, selectedIndex: Int = 0) async -> Bool {
+        guard isEnabled else { return false }
+
+        guard let url = URL(string: "\(baseURL)/api/notifications") else { return false }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = authToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        var payload: [String: Any] = [
+            "id": "nav_\(UUID().uuidString.prefix(8).lowercased())",
+            "type": "navigation",
+            "category": "tv_dashboard",
+            "action": action.rawValue,
+            "selectedIndex": selectedIndex,
+            "from": "HandController",
+            "timestamp": Int(Date().timeIntervalSince1970 * 1000)
+        ]
+
+        if let sectionId {
+            payload["section"] = sectionId
+        }
+
+        switch action {
+        case .selectSection:
+            payload["title"] = "Navigate to section"
+            payload["icon"] = "👋"
+        case .openFullscreen:
+            payload["title"] = "Open full screen"
+            payload["icon"] = "🤏"
+        case .closeFullscreen:
+            payload["title"] = "Back to dashboard"
+            payload["icon"] = "🤌"
+        case .powerOn:
+            payload["title"] = "TV Power On"
+            payload["icon"] = "📺"
+        }
+
+        guard let body = try? JSONSerialization.data(withJSONObject: payload) else { return false }
+        request.httpBody = body
+
+        do {
+            let (_, response) = try await session.data(for: request)
+            return (response as? HTTPURLResponse).map { (200..<300).contains($0.statusCode) } ?? false
+        } catch {
+            return false
+        }
+    }
+
     /// Check connectivity to the home-center API.
     func healthCheck() async -> Bool {
         guard let url = URL(string: "\(baseURL)/api/health") else { return false }
