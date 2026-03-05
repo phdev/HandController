@@ -13,11 +13,21 @@ final class GestureClassifier {
     private let waveWindowSize = 8
     private let waveDirectionRatio: CGFloat = 2.0
 
+    // Thumb swipe detection parameters
+    private let thumbSwipeMinDisplacement: CGFloat = 0.08
+    private let thumbSwipeWindowSize = 6
+    private let thumbSwipeDirectionRatio: CGFloat = 1.8
+
     // Track wrist positions per hand for wave detection.
     // Key is chirality string ("Left" or "Right").
     private var wristHistory: [String: [(position: CGPoint, time: CFAbsoluteTime)]] = [:]
     private var lastWaveTime: [String: CFAbsoluteTime] = [:]
     private let waveCooldown: CFAbsoluteTime = 1.0
+
+    // Track thumb tip positions per hand for thumb swipe detection.
+    private var thumbHistory: [String: [(position: CGPoint, time: CFAbsoluteTime)]] = [:]
+    private var lastThumbSwipeTime: [String: CFAbsoluteTime] = [:]
+    private let thumbSwipeCooldown: CFAbsoluteTime = 1.0
 
     /// Classify the gesture for a single detected hand.
     func classify(hand: DetectedHand) -> HandGesture {
@@ -27,6 +37,15 @@ final class GestureClassifier {
         // Check pinch gestures first (instantaneous, no temporal tracking needed)
         if let pinch = detectPinch(joints: joints) {
             return pinch
+        }
+
+        // Track thumb tip for swipe detection
+        if let thumbTip = joints[.thumbTip] {
+            trackThumb(position: thumbTip, handKey: handKey)
+
+            if let swipe = detectThumbSwipe(handKey: handKey) {
+                return swipe
+            }
         }
 
         // Track wrist for wave detection
@@ -45,6 +64,8 @@ final class GestureClassifier {
     func reset() {
         wristHistory.removeAll()
         lastWaveTime.removeAll()
+        thumbHistory.removeAll()
+        lastThumbSwipeTime.removeAll()
     }
 
     // MARK: - Pinch Detection
@@ -128,6 +149,59 @@ final class GestureClassifier {
         // Consume the wave: clear history and set cooldown
         lastWaveTime[handKey] = now
         wristHistory[handKey] = []
+
+        return gesture
+    }
+
+    // MARK: - Thumb Swipe Detection
+
+    private func trackThumb(position: CGPoint, handKey: String) {
+        let now = CFAbsoluteTimeGetCurrent()
+        var history = thumbHistory[handKey] ?? []
+        history.append((position: position, time: now))
+
+        let cutoff = now - 0.5
+        history = history.filter { $0.time > cutoff }
+
+        if history.count > thumbSwipeWindowSize * 2 {
+            history = Array(history.suffix(thumbSwipeWindowSize * 2))
+        }
+
+        thumbHistory[handKey] = history
+    }
+
+    private func detectThumbSwipe(handKey: String) -> HandGesture? {
+        guard let history = thumbHistory[handKey],
+              history.count >= thumbSwipeWindowSize else {
+            return nil
+        }
+
+        let now = CFAbsoluteTimeGetCurrent()
+        if let lastSwipe = lastThumbSwipeTime[handKey], now - lastSwipe < thumbSwipeCooldown {
+            return nil
+        }
+
+        let first = history.first!.position
+        let last = history.last!.position
+        let dx = last.x - first.x
+        let dy = last.y - first.y
+        let absDx = abs(dx)
+        let absDy = abs(dy)
+
+        let totalDisplacement = max(absDx, absDy)
+        guard totalDisplacement > thumbSwipeMinDisplacement else { return nil }
+
+        let gesture: HandGesture
+        if absDx > absDy * thumbSwipeDirectionRatio {
+            gesture = dx > 0 ? .thumbSwipeRight : .thumbSwipeLeft
+        } else if absDy > absDx * thumbSwipeDirectionRatio {
+            gesture = dy > 0 ? .thumbSwipeDown : .thumbSwipeUp
+        } else {
+            return nil
+        }
+
+        lastThumbSwipeTime[handKey] = now
+        thumbHistory[handKey] = []
 
         return gesture
     }

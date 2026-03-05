@@ -16,14 +16,23 @@ actor HomeCenterClient {
     private let throttleInterval: TimeInterval = 2.0
     private var lastSentTimes: [HandGesture: Date] = [:]
 
-    var isEnabled: Bool = false
+    var isEnabled: Bool = true
 
     init(baseURL: String = HomeCenterClient.defaultBaseURL, authToken: String? = nil) {
         self.baseURL = baseURL
-        self.authToken = authToken
+        self.authToken = authToken ?? Self.loadTokenFromSecrets()
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 10
         self.session = URLSession(configuration: config)
+    }
+
+    private static func loadTokenFromSecrets() -> String? {
+        guard let url = Bundle.main.url(forResource: "Secrets", withExtension: "plist"),
+              let data = try? Data(contentsOf: url),
+              let dict = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any] else {
+            return nil
+        }
+        return dict["HomeCenterAuthToken"] as? String
     }
 
     func setAuthToken(_ token: String?) {

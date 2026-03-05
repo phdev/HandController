@@ -9,6 +9,7 @@ iOS app that connects to **Meta Ray-Ban smart glasses** via the [Meta Device Acc
 | Gesture | Detection Method |
 |---------|-----------------|
 | Wave Left / Right / Up / Down | Temporal wrist position tracking over ~0.6s window |
+| Thumb Swipe Left / Right / Up / Down | Temporal thumb tip tracking over ~0.5s window (0.08 displacement, 6-frame window) |
 | Index finger + thumb pinch | Spatial proximity (thumb tip to index tip < 0.06 normalized) |
 | Middle finger + thumb pinch | Spatial proximity (thumb tip to middle tip < 0.06 normalized) |
 
@@ -25,8 +26,9 @@ Models/
 Services/
   HandPoseDetector.swift             ← Vision VNDetectHumanHandPoseRequest, supports both
                                        UIImage and CVPixelBuffer input, 0.3 confidence threshold
-  GestureClassifier.swift            ← Pinch detection (instantaneous) + wave detection (temporal),
-                                       per-hand tracking, 1s cooldown between waves
+  GestureClassifier.swift            ← Pinch detection (instantaneous) + thumb swipe detection
+                                       (temporal, thumbTip) + wave detection (temporal, wrist),
+                                       per-hand tracking, 1s cooldown between gestures
   HomeCenterClient.swift             ← Actor, POSTs to /api/notifications, 2s throttle per gesture
                                        type, configurable auth token
 
@@ -91,6 +93,10 @@ Auth: `Authorization: Bearer <AUTH_TOKEN>` (same token as worker's `AUTH_TOKEN` 
 | Wave min displacement | 0.15 (normalized) | `GestureClassifier` |
 | Wave window | 8 frames | `GestureClassifier` |
 | Wave cooldown | 1.0s | `GestureClassifier` |
+| Thumb swipe min displacement | 0.08 (normalized) | `GestureClassifier` |
+| Thumb swipe window | 6 frames | `GestureClassifier` |
+| Thumb swipe direction ratio | 1.8 | `GestureClassifier` |
+| Thumb swipe cooldown | 1.0s | `GestureClassifier` |
 | Throttle interval | 2.0s per gesture type | `HomeCenterClient` |
 | Stream resolution | Low | `StreamViewModel` |
 | Frame rate | 15 fps | `StreamViewModel` |

@@ -3,7 +3,7 @@ import SwiftUI
 /// Debug panel showing gesture event log and home-center integration settings.
 struct DebugPanelView: View {
     @ObservedObject var streamVM: StreamViewModel
-    @State private var homeCenterEnabled = false
+    @State private var homeCenterEnabled = true
     @State private var homeCenterToken = ""
     @State private var healthStatus: HealthStatus = .unknown
     @Environment(\.dismiss) private var dismiss

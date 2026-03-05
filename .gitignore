@@ -14,6 +14,9 @@ Package.resolved
 # CocoaPods
 Pods/
 
+# Secrets
+HandController/Secrets.plist
+
 # OS
 .DS_Store
 *.swp

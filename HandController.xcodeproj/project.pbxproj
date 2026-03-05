@@ -25,6 +25,7 @@
 		B1000013 /* NonStreamView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000013 /* NonStreamView.swift */; };
 		B1000014 /* MockDeviceMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000014 /* MockDeviceMenuView.swift */; };
 		B1000020 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B2000020 /* Assets.xcassets */; };
+		B1000021 /* Secrets.plist in Resources */ = {isa = PBXBuildFile; fileRef = B2000023 /* Secrets.plist */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -45,6 +46,7 @@
 		B2000020 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B2000021 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B2000022 /* HandController.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = HandController.entitlements; sourceTree = "<group>"; };
+		B2000023 /* Secrets.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Secrets.plist; sourceTree = "<group>"; };
 		B3000001 /* HandController.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HandController.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -81,6 +83,7 @@
 				B2000020 /* Assets.xcassets */,
 				B2000021 /* Info.plist */,
 				B2000022 /* HandController.entitlements */,
+				B2000023 /* Secrets.plist */,
 			);
 			path = HandController;
 			sourceTree = "<group>";
@@ -201,6 +204,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B1000020 /* Assets.xcassets in Resources */,
+				B1000021 /* Secrets.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
