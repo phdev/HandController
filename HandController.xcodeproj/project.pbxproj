@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A4EDED572F567CEE008A7348 /* MWDATCore in Frameworks */ = {isa = PBXBuildFile; productRef = BPKG0001 /* MWDATCore */; };
+		A4EDED582F567CEE008A7348 /* MWDATCamera in Frameworks */ = {isa = PBXBuildFile; productRef = BPKG0002 /* MWDATCamera */; };
+		A4EDED592F567CEE008A7348 /* MWDATMockDevice in Frameworks */ = {isa = PBXBuildFile; productRef = BPKG0003 /* MWDATMockDevice */; };
 		B1000001 /* HandControllerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000001 /* HandControllerApp.swift */; };
 		B1000002 /* HandLandmark.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000002 /* HandLandmark.swift */; };
 		B1000003 /* GestureEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000003 /* GestureEvent.swift */; };
@@ -20,6 +23,7 @@
 		B1000011 /* HandOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000011 /* HandOverlayView.swift */; };
 		B1000012 /* DebugPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000012 /* DebugPanelView.swift */; };
 		B1000013 /* NonStreamView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000013 /* NonStreamView.swift */; };
+		B1000014 /* MockDeviceMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000014 /* MockDeviceMenuView.swift */; };
 		B1000020 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B2000020 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -37,6 +41,7 @@
 		B2000011 /* HandOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandOverlayView.swift; sourceTree = "<group>"; };
 		B2000012 /* DebugPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugPanelView.swift; sourceTree = "<group>"; };
 		B2000013 /* NonStreamView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NonStreamView.swift; sourceTree = "<group>"; };
+		B2000014 /* MockDeviceMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockDeviceMenuView.swift; sourceTree = "<group>"; };
 		B2000020 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B2000021 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B2000022 /* HandController.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = HandController.entitlements; sourceTree = "<group>"; };
@@ -48,6 +53,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A4EDED592F567CEE008A7348 /* MWDATMockDevice in Frameworks */,
+				A4EDED582F567CEE008A7348 /* MWDATCamera in Frameworks */,
+				A4EDED572F567CEE008A7348 /* MWDATCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -113,6 +121,7 @@
 				B2000011 /* HandOverlayView.swift */,
 				B2000012 /* DebugPanelView.swift */,
 				B2000013 /* NonStreamView.swift */,
+				B2000014 /* MockDeviceMenuView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -215,6 +224,7 @@
 				B1000011 /* HandOverlayView.swift in Sources */,
 				B1000012 /* DebugPanelView.swift in Sources */,
 				B1000013 /* NonStreamView.swift in Sources */,
+				B1000014 /* MockDeviceMenuView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -343,9 +353,11 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLIENT_TOKEN = "AR|1417923890069897|6c2e54f51fc06c691742f706c1d72691";
 				CODE_SIGN_ENTITLEMENTS = HandController/HandController.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = N5VRMZ822C;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = HandController/Info.plist;
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "HandController needs Bluetooth to connect to Meta AI Glasses.";
@@ -359,6 +371,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
+				META_APP_ID = 1417923890069897;
 				PRODUCT_BUNDLE_IDENTIFIER = com.handcontroller.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -372,9 +385,11 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLIENT_TOKEN = "AR|1417923890069897|6c2e54f51fc06c691742f706c1d72691";
 				CODE_SIGN_ENTITLEMENTS = HandController/HandController.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = N5VRMZ822C;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = HandController/Info.plist;
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "HandController needs Bluetooth to connect to Meta AI Glasses.";
@@ -388,6 +403,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
+				META_APP_ID = 1417923890069897;
 				PRODUCT_BUNDLE_IDENTIFIER = com.handcontroller.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -447,7 +463,6 @@
 			productName = MWDATMockDevice;
 		};
 /* End XCSwiftPackageProductDependency section */
-
 	};
 	rootObject = B9000001 /* Project object */;
 }

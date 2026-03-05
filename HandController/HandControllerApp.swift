@@ -37,7 +37,7 @@ struct HandControllerApp: App {
                 .onOpenURL { url in
                     // Handle Meta AI app OAuth callback
                     Task {
-                        try? await Wearables.handleUrl(url)
+                        try? await Wearables.shared.handleUrl(url)
                     }
                 }
                 .alert("Error", isPresented: $wearablesVM.showError) {
@@ -57,9 +57,7 @@ struct HandControllerApp: App {
                     .padding()
                 }
                 .sheet(isPresented: $showMockDeviceMenu) {
-                    MockDeviceKitView(
-                        viewModel: MockDeviceKitView.ViewModel(mockDeviceKit: MockDeviceKit.shared)
-                    )
+                    MockDeviceMenuView()
                 }
                 #endif
         }

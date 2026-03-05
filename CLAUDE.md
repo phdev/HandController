@@ -32,7 +32,7 @@ Services/
 
 ViewModels/
   WearablesViewModel.swift           ← DAT SDK device registration/discovery, async streams
-  StreamViewModel.swift              ← Pipeline: DAT frames → Vision → classify → UI + home-center
+  StreamViewModel.swift              ← Pipeline: DAT frames → CVPixelBuffer → Vision → classify → UI + home-center
 
 Views/
   ConnectionView.swift               ← Pre-registration screen (connect glasses button)
@@ -40,6 +40,7 @@ Views/
   StreamingView.swift                ← Camera feed + HUD (FPS, hand count, gesture chips)
   HandOverlayView.swift              ← Canvas-drawn skeleton (cyan = left, orange = right)
   DebugPanelView.swift               ← Event log, home-center settings, health check
+  MockDeviceMenuView.swift           ← DEBUG-only mock device pairing UI (replaces removed MockDeviceKitView)
 ```
 
 ## Dependencies
@@ -91,7 +92,7 @@ Auth: `Authorization: Bearer <AUTH_TOKEN>` (same token as worker's `AUTH_TOKEN` 
 | Wave window | 8 frames | `GestureClassifier` |
 | Wave cooldown | 1.0s | `GestureClassifier` |
 | Throttle interval | 2.0s per gesture type | `HomeCenterClient` |
-| Stream resolution | Medium (504x896) | `StreamViewModel` |
-| Frame rate | 24 fps | `StreamViewModel` |
+| Stream resolution | Low | `StreamViewModel` |
+| Frame rate | 15 fps | `StreamViewModel` |
 | Joint confidence | 0.3 minimum | `HandPoseDetector` |
 | Max event history | 50 events | `StreamViewModel` |

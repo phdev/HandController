@@ -1,3 +1,4 @@
+import CoreMedia
 import MWDATCore
 import MWDATCamera
 import SwiftUI
@@ -51,7 +52,8 @@ final class StreamViewModel: ObservableObject {
     private let processingQueue = DispatchQueue(label: "com.handcontroller.processing", qos: .userInitiated)
     private var frameCount = 0
     private var lastFPSUpdate = Date()
-    private var isProcessingFrame = false
+    /// Atomic flag for frame skipping — accessed from processingQueue only.
+    private nonisolated(unsafe) var _isProcessingFrame = false
 
     /// Maximum number of gesture events to keep in the debug log.
     private let maxEventHistory = 50
@@ -63,10 +65,12 @@ final class StreamViewModel: ObservableObject {
         self.homeCenterClient = homeCenterClient
         self.deviceSelector = AutoDeviceSelector(wearables: wearables)
 
+        // Lower resolution + frame rate = less Bluetooth bandwidth pressure,
+        // fewer ABR compression artifacts, and higher per-frame quality.
         let config = StreamSessionConfig(
             videoCodec: VideoCodec.raw,
-            resolution: StreamingResolution.medium,
-            frameRate: 24
+            resolution: StreamingResolution.low,
+            frameRate: 15
         )
         self.streamSession = StreamSession(streamSessionConfig: config, deviceSelector: deviceSelector)
 
@@ -93,36 +97,34 @@ final class StreamViewModel: ObservableObject {
         // Video frames → hand detection pipeline
         frameToken = streamSession.videoFramePublisher.listen { [weak self] videoFrame in
             guard let self else { return }
-            // Get UIImage on the callback thread
-            guard let image = videoFrame.makeUIImage() else { return }
+
+            // Extract pixel buffer for Vision before dispatching (avoids UIImage→CGImage round-trip)
+            let sampleBuffer = videoFrame.sampleBuffer
+            let displayImage = videoFrame.makeUIImage()
 
             Task { @MainActor in
-                self.currentFrame = image
+                if let displayImage {
+                    self.currentFrame = displayImage
+                }
                 self.updateFPS()
             }
 
-            // Process hand detection on background queue (skip if still processing previous frame)
+            // Skip frame if previous Vision detection hasn't finished
+            guard !self._isProcessingFrame else { return }
+            self._isProcessingFrame = true
+
             self.processingQueue.async { [weak self] in
                 guard let self else { return }
 
-                // Simple frame skipping to avoid backing up
-                var shouldProcess = false
-                Task { @MainActor in
-                    if !self.isProcessingFrame {
-                        self.isProcessingFrame = true
-                        shouldProcess = true
-                    }
+                // Use CVPixelBuffer directly — avoids UIImage→CGImage conversion overhead
+                var hands: [DetectedHand] = []
+                if let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) {
+                    hands = self.handPoseDetector.detectHands(in: pixelBuffer)
                 }
-
-                // Small delay to let the main actor check complete
-                usleep(1000)
-                guard shouldProcess else { return }
-
-                let hands = self.handPoseDetector.detectHands(in: image)
 
                 Task { @MainActor [weak self] in
                     guard let self else { return }
-                    self.isProcessingFrame = false
+                    self._isProcessingFrame = false
                     self.detectedHands = hands
                     self.classifyGestures(for: hands)
                 }
