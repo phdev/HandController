@@ -4,6 +4,7 @@ import SwiftUI
 struct NonStreamView: View {
     @ObservedObject var streamVM: StreamViewModel
     @ObservedObject var wearablesVM: WearablesViewModel
+    @State private var showWakeRecord = false
 
     var body: some View {
         VStack(spacing: 32) {
@@ -44,6 +45,19 @@ struct NonStreamView: View {
                 .padding(.horizontal, 40)
 
                 Button {
+                    showWakeRecord = true
+                } label: {
+                    Label("Record Wake Word Samples", systemImage: "mic.badge.plus")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.orange)
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                }
+                .padding(.horizontal, 40)
+
+                Button {
                     wearablesVM.disconnectGlasses()
                 } label: {
                     Text("Disconnect Glasses")
@@ -63,6 +77,9 @@ struct NonStreamView: View {
                     .foregroundStyle(.tertiary)
             }
             .padding(.bottom)
+        }
+        .sheet(isPresented: $showWakeRecord) {
+            WakeRecordView(client: streamVM.homeCenterClient)
         }
     }
 }
