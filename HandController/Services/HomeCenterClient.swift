@@ -97,6 +97,8 @@ actor HomeCenterClient {
         var active: Bool
         var type: String
         var count: Int
+        var totalPositive: Int
+        var totalNegative: Int
     }
 
     /// Toggle wake word recording on/off.
@@ -133,9 +135,31 @@ actor HomeCenterClient {
                   let active = json["active"] as? Bool,
                   let type = json["type"] as? String,
                   let count = json["count"] as? Int else { return nil }
-            return WakeRecordStatus(active: active, type: type, count: count)
+            let totalPositive = json["totalPositive"] as? Int ?? 0
+            let totalNegative = json["totalNegative"] as? Int ?? 0
+            return WakeRecordStatus(active: active, type: type, count: count, totalPositive: totalPositive, totalNegative: totalNegative)
         } catch {
             return nil
+        }
+    }
+
+    /// Reset cumulative totals.
+    func resetWakeRecordTotals() async -> Bool {
+        guard let url = URL(string: "\(baseURL)/api/wake-record") else { return false }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = authToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let payload: [String: String] = ["action": "reset_totals"]
+        guard let body = try? JSONSerialization.data(withJSONObject: payload) else { return false }
+        request.httpBody = body
+        do {
+            let (_, response) = try await session.data(for: request)
+            return (response as? HTTPURLResponse).map { (200..<300).contains($0.statusCode) } ?? false
+        } catch {
+            return false
         }
     }
 

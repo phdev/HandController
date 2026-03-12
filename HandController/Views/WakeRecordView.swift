@@ -8,6 +8,8 @@ struct WakeRecordView: View {
     @State private var isActive = false
     @State private var sampleType = "positive"
     @State private var clipCount = 0
+    @State private var totalPositive = 0
+    @State private var totalNegative = 0
     @State private var pollTimer: Timer?
     @State private var isLoading = false
 
@@ -23,6 +25,8 @@ struct WakeRecordView: View {
                 if isActive {
                     activeIndicator
                 }
+
+                totalsCard
 
                 Spacer()
             }
@@ -140,6 +144,66 @@ struct WakeRecordView: View {
         .background(Color.red.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
     }
 
+    // MARK: - Totals Card
+
+    private var totalsCard: some View {
+        VStack(spacing: 12) {
+            Text("Cumulative Totals")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: 24) {
+                totalGauge(label: "Positive", count: totalPositive, color: .green)
+                totalGauge(label: "Negative", count: totalNegative, color: .orange)
+            }
+
+            Button(role: .destructive) {
+                Task {
+                    if await client.resetWakeRecordTotals() {
+                        totalPositive = 0
+                        totalNegative = 0
+                    }
+                }
+            } label: {
+                Label("Reset Totals", systemImage: "arrow.counterclockwise")
+                    .font(.caption)
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity)
+        .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private func totalGauge(label: String, count: Int, color: Color) -> some View {
+        VStack(spacing: 6) {
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+
+            ZStack {
+                Circle()
+                    .stroke(color.opacity(0.2), lineWidth: 6)
+                Circle()
+                    .trim(from: 0, to: min(CGFloat(count) / 50.0, 1.0))
+                    .stroke(color, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .animation(.default, value: count)
+
+                Text("\(count)/50")
+                    .font(.caption)
+                    .fontWeight(.bold)
+                    .monospacedDigit()
+            }
+            .frame(width: 60, height: 60)
+
+            if count >= 50 {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                    .font(.caption)
+            }
+        }
+    }
+
     // MARK: - Actions
 
     private func toggleRecording() {
@@ -150,9 +214,7 @@ struct WakeRecordView: View {
                 // Fetch fresh status to confirm
                 if let status = await client.getWakeRecordStatus() {
                     await MainActor.run {
-                        isActive = status.active
-                        clipCount = status.count
-                        sampleType = status.type
+                        applyStatus(status)
                         isLoading = false
                         if isActive { startPolling() } else { stopPolling() }
                     }
@@ -169,13 +231,19 @@ struct WakeRecordView: View {
         }
     }
 
+    private func applyStatus(_ status: HomeCenterClient.WakeRecordStatus) {
+        isActive = status.active
+        clipCount = status.count
+        sampleType = status.type
+        totalPositive = status.totalPositive
+        totalNegative = status.totalNegative
+    }
+
     private func fetchStatus() {
         Task {
             if let status = await client.getWakeRecordStatus() {
                 await MainActor.run {
-                    isActive = status.active
-                    clipCount = status.count
-                    sampleType = status.type
+                    applyStatus(status)
                     if isActive { startPolling() }
                 }
             }
@@ -188,8 +256,7 @@ struct WakeRecordView: View {
             Task {
                 if let status = await client.getWakeRecordStatus() {
                     await MainActor.run {
-                        clipCount = status.count
-                        isActive = status.active
+                        applyStatus(status)
                         if !status.active { stopPolling() }
                     }
                 }

@@ -30,7 +30,7 @@ Services/
                                        (temporal, thumbTip) + wave detection (temporal, wrist),
                                        per-hand tracking, 1s cooldown between gestures
   HomeCenterClient.swift             ← Actor, POSTs to /api/notifications, 2s throttle per gesture
-                                       type, configurable auth token
+                                       type, auth token from Secrets.plist, wake word recording API
 
 ViewModels/
   WearablesViewModel.swift           ← DAT SDK device registration/discovery, async streams
@@ -41,7 +41,8 @@ Views/
   NonStreamView.swift                ← Post-registration, pre-streaming (start button)
   StreamingView.swift                ← Camera feed + HUD (FPS, hand count, gesture chips)
   HandOverlayView.swift              ← Canvas-drawn skeleton (cyan = left, orange = right)
-  DebugPanelView.swift               ← Event log, home-center settings, health check
+  DebugPanelView.swift               ← Event log, home-center settings, health check, tools
+  WakeRecordView.swift               ← Wake word sample recording UI (controls Pi recording via worker API)
   MockDeviceMenuView.swift           ← DEBUG-only mock device pairing UI (replaces removed MockDeviceKitView)
 ```
 
@@ -83,7 +84,23 @@ POST /api/notifications
 }
 ```
 
-Auth: `Authorization: Bearer <AUTH_TOKEN>` (same token as worker's `AUTH_TOKEN` secret). Enable and configure in the debug panel (ladybug icon → Home Center Integration section).
+Auth: `Authorization: Bearer <AUTH_TOKEN>` (loaded from git-ignored `Secrets.plist`, same token as worker's `AUTH_TOKEN` secret). Events send automatically on launch. Configure in the debug panel (ladybug icon → Home Center Integration section).
+
+## Wake Word Recording
+
+The app includes a wake word sample recording tool (Debug panel → Tools → Record Wake Word Samples) that controls the Pi's recording mode via the worker API:
+
+```
+POST /api/wake-record  {"action": "toggle", "type": "positive"}   ← start/stop recording
+POST /api/wake-record  {"action": "set_type", "type": "negative"} ← switch sample type
+POST /api/wake-record  {"action": "reset_totals"}                 ← reset cumulative counts
+GET  /api/wake-record  → {"active", "type", "count", "totalPositive", "totalNegative"}
+```
+
+- Segmented control switches between positive ("Hey Homer") and negative (anything else) samples
+- Red pulsing indicator + session clip count while recording (polls every 2s)
+- Circular progress gauges show cumulative totals with a goal of 50 each
+- Pi plays ascending chime on start, beep per saved clip, descending tone on stop
 
 ## Key Constants
 
