@@ -23,6 +23,7 @@
 		B1000011 /* HandOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000011 /* HandOverlayView.swift */; };
 		B1000012 /* DebugPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000012 /* DebugPanelView.swift */; };
 		B1000013 /* NonStreamView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000013 /* NonStreamView.swift */; };
+		7C4FA68B01B445F1B8D3E970 /* WakeRecordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39D080CDA34A4BFF91E88707 /* WakeRecordView.swift */; };
 		B1000014 /* MockDeviceMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2000014 /* MockDeviceMenuView.swift */; };
 		B1000020 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B2000020 /* Assets.xcassets */; };
 		B1000021 /* Secrets.plist in Resources */ = {isa = PBXBuildFile; fileRef = B2000023 /* Secrets.plist */; };
@@ -42,6 +43,7 @@
 		B2000011 /* HandOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandOverlayView.swift; sourceTree = "<group>"; };
 		B2000012 /* DebugPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugPanelView.swift; sourceTree = "<group>"; };
 		B2000013 /* NonStreamView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NonStreamView.swift; sourceTree = "<group>"; };
+		39D080CDA34A4BFF91E88707 /* WakeRecordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WakeRecordView.swift; sourceTree = "<group>"; };
 		B2000014 /* MockDeviceMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockDeviceMenuView.swift; sourceTree = "<group>"; };
 		B2000020 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B2000021 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -124,6 +126,7 @@
 				B2000011 /* HandOverlayView.swift */,
 				B2000012 /* DebugPanelView.swift */,
 				B2000013 /* NonStreamView.swift */,
+				39D080CDA34A4BFF91E88707 /* WakeRecordView.swift */,
 				B2000014 /* MockDeviceMenuView.swift */,
 			);
 			path = Views;
@@ -228,6 +231,7 @@
 				B1000011 /* HandOverlayView.swift in Sources */,
 				B1000012 /* DebugPanelView.swift in Sources */,
 				B1000013 /* NonStreamView.swift in Sources */,
+				7C4FA68B01B445F1B8D3E970 /* WakeRecordView.swift in Sources */,
 				B1000014 /* MockDeviceMenuView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

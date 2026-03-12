@@ -6,6 +6,7 @@ struct DebugPanelView: View {
     @State private var homeCenterEnabled = true
     @State private var homeCenterToken = ""
     @State private var healthStatus: HealthStatus = .unknown
+    @State private var showWakeRecord = false
     @Environment(\.dismiss) private var dismiss
 
     enum HealthStatus {
@@ -17,6 +18,7 @@ struct DebugPanelView: View {
             List {
                 statusSection
                 homeCenterSection
+                toolsSection
                 gestureEventSection
             }
             .navigationTitle("Debug")
@@ -109,6 +111,21 @@ struct DebugPanelView: View {
             Text("Events are sent to home-center as notifications via REST API.")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
+        }
+    }
+
+    // MARK: - Tools Section
+
+    private var toolsSection: some View {
+        Section("Tools") {
+            Button {
+                showWakeRecord = true
+            } label: {
+                Label("Record Wake Word Samples", systemImage: "mic.badge.plus")
+            }
+            .sheet(isPresented: $showWakeRecord) {
+                WakeRecordView(client: streamVM.homeCenterClient)
+            }
         }
     }
 

@@ -90,4 +90,72 @@ actor HomeCenterClient {
             return false
         }
     }
+
+    // MARK: - Wake Word Recording
+
+    struct WakeRecordStatus {
+        var active: Bool
+        var type: String
+        var count: Int
+    }
+
+    /// Toggle wake word recording on/off.
+    func toggleWakeRecord(type: String) async -> Bool {
+        guard let url = URL(string: "\(baseURL)/api/wake-record") else { return false }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = authToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let payload: [String: String] = ["action": "toggle", "type": type]
+        guard let body = try? JSONSerialization.data(withJSONObject: payload) else { return false }
+        request.httpBody = body
+        do {
+            let (_, response) = try await session.data(for: request)
+            return (response as? HTTPURLResponse).map { (200..<300).contains($0.statusCode) } ?? false
+        } catch {
+            return false
+        }
+    }
+
+    /// Get current wake word recording status.
+    func getWakeRecordStatus() async -> WakeRecordStatus? {
+        guard let url = URL(string: "\(baseURL)/api/wake-record") else { return nil }
+        var request = URLRequest(url: url)
+        if let token = authToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        do {
+            let (data, response) = try await session.data(for: request)
+            guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode),
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let active = json["active"] as? Bool,
+                  let type = json["type"] as? String,
+                  let count = json["count"] as? Int else { return nil }
+            return WakeRecordStatus(active: active, type: type, count: count)
+        } catch {
+            return nil
+        }
+    }
+
+    /// Switch the sample type (positive/negative).
+    func setWakeRecordType(_ type: String) async -> Bool {
+        guard let url = URL(string: "\(baseURL)/api/wake-record") else { return false }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = authToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        let payload: [String: String] = ["action": "set_type", "type": type]
+        guard let body = try? JSONSerialization.data(withJSONObject: payload) else { return false }
+        request.httpBody = body
+        do {
+            let (_, response) = try await session.data(for: request)
+            return (response as? HTTPURLResponse).map { (200..<300).contains($0.statusCode) } ?? false
+        } catch {
+            return false
+        }
+    }
 }
