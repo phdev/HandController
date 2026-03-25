@@ -7,7 +7,6 @@ struct WakeRecordView: View {
 
     @State private var isActive = false
     @State private var sampleType = "positive"
-    @State private var clipCount = 0
     @State private var totalPositive = 0
     @State private var totalNegative = 0
     @State private var pollTimer: Timer?
@@ -17,9 +16,7 @@ struct WakeRecordView: View {
         NavigationStack {
             VStack(spacing: 24) {
                 instructionsCard
-
                 sampleTypePicker
-
                 recordButton
 
                 if isActive {
@@ -27,7 +24,6 @@ struct WakeRecordView: View {
                 }
 
                 totalsCard
-
                 Spacer()
             }
             .padding()
@@ -38,7 +34,6 @@ struct WakeRecordView: View {
                     Button("Done") { dismiss() }
                 }
             }
-            .onAppear { fetchStatus() }
             .onDisappear { stopPolling() }
         }
     }
@@ -77,11 +72,6 @@ struct WakeRecordView: View {
                 Text("Negative").tag("negative")
             }
             .pickerStyle(.segmented)
-            .onChange(of: sampleType) { _, newValue in
-                Task {
-                    _ = await client.setWakeRecordType(newValue)
-                }
-            }
         }
     }
 
@@ -89,7 +79,7 @@ struct WakeRecordView: View {
 
     private var recordButton: some View {
         Button {
-            toggleRecording()
+            toggle()
         } label: {
             VStack(spacing: 12) {
                 ZStack {
@@ -119,25 +109,15 @@ struct WakeRecordView: View {
     // MARK: - Active Indicator
 
     private var activeIndicator: some View {
-        VStack(spacing: 12) {
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(.red)
-                    .frame(width: 10, height: 10)
-                    .opacity(isActive ? 1 : 0)
-                    .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: isActive)
+        HStack(spacing: 8) {
+            Circle()
+                .fill(.red)
+                .frame(width: 10, height: 10)
+                .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: isActive)
 
-                Text("Recording \(sampleType == "positive" ? "\"Hey Homer\"" : "negative") samples")
-                    .font(.subheadline)
-                    .foregroundStyle(.red)
-            }
-
-            Text("\(clipCount) clip\(clipCount == 1 ? "" : "s") saved")
-                .font(.title2)
-                .fontWeight(.bold)
-                .monospacedDigit()
-                .contentTransition(.numericText())
-                .animation(.default, value: clipCount)
+            Text("Recording \(sampleType == "positive" ? "\"Hey Homer\"" : "negative") samples")
+                .font(.subheadline)
+                .foregroundStyle(.red)
         }
         .padding()
         .frame(maxWidth: .infinity)
@@ -158,12 +138,7 @@ struct WakeRecordView: View {
             }
 
             Button(role: .destructive) {
-                Task {
-                    if await client.resetWakeRecordTotals() {
-                        totalPositive = 0
-                        totalNegative = 0
-                    }
-                }
+                resetTotals()
             } label: {
                 Label("Reset Totals", systemImage: "arrow.counterclockwise")
                     .font(.caption)
@@ -206,24 +181,20 @@ struct WakeRecordView: View {
 
     // MARK: - Actions
 
-    private func toggleRecording() {
+    private func applyStatus(_ status: HomeCenterClient.WakeRecordStatus) {
+        isActive = status.active
+        totalPositive = status.totalPositive
+        totalNegative = status.totalNegative
+        if isActive { startPolling() } else { stopPolling() }
+    }
+
+    private func toggle() {
         isLoading = true
         Task {
-            let ok = await client.toggleWakeRecord(type: sampleType)
-            if ok {
-                // Fetch fresh status to confirm
-                if let status = await client.getWakeRecordStatus() {
-                    await MainActor.run {
-                        applyStatus(status)
-                        isLoading = false
-                        if isActive { startPolling() } else { stopPolling() }
-                    }
-                } else {
-                    await MainActor.run {
-                        isActive.toggle()
-                        isLoading = false
-                        if isActive { startPolling() } else { stopPolling() }
-                    }
+            if let status = await client.toggleWakeRecord(type: sampleType) {
+                await MainActor.run {
+                    applyStatus(status)
+                    isLoading = false
                 }
             } else {
                 await MainActor.run { isLoading = false }
@@ -231,21 +202,10 @@ struct WakeRecordView: View {
         }
     }
 
-    private func applyStatus(_ status: HomeCenterClient.WakeRecordStatus) {
-        isActive = status.active
-        clipCount = status.count
-        sampleType = status.type
-        totalPositive = status.totalPositive
-        totalNegative = status.totalNegative
-    }
-
-    private func fetchStatus() {
+    private func resetTotals() {
         Task {
-            if let status = await client.getWakeRecordStatus() {
-                await MainActor.run {
-                    applyStatus(status)
-                    if isActive { startPolling() }
-                }
+            if let status = await client.resetWakeRecordTotals() {
+                await MainActor.run { applyStatus(status) }
             }
         }
     }
@@ -255,10 +215,7 @@ struct WakeRecordView: View {
         pollTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { _ in
             Task {
                 if let status = await client.getWakeRecordStatus() {
-                    await MainActor.run {
-                        applyStatus(status)
-                        if !status.active { stopPolling() }
-                    }
+                    await MainActor.run { applyStatus(status) }
                 }
             }
         }

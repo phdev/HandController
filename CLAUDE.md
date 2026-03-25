@@ -92,13 +92,15 @@ The app includes a wake word sample recording tool (Debug panel → Tools → Re
 
 ```
 POST /api/wake-record  {"action": "toggle", "type": "positive"}   ← start/stop recording
-POST /api/wake-record  {"action": "set_type", "type": "negative"} ← switch sample type
+POST /api/wake-record  {"action": "status"}                       ← get current state
 POST /api/wake-record  {"action": "reset_totals"}                 ← reset cumulative counts
-GET  /api/wake-record  → {"active", "type", "count", "totalPositive", "totalNegative"}
+→ All actions return: {"active", "type", "count", "totalPositive", "totalNegative"}
 ```
 
-- Segmented control switches between positive ("Hey Homer") and negative (anything else) samples
-- Red pulsing indicator + session clip count while recording (polls every 2s)
+- Worker response is the single source of truth — no local state tracking or optimistic updates
+- Segmented control sets sample type locally (used in toggle POST, no separate set_type call)
+- Toggle button POSTs toggle, updates all UI from response
+- Polls every 2s while active via POST status; stops when active becomes false
 - Circular progress gauges show cumulative totals with a goal of 50 each
 - Pi plays ascending chime on start, beep per saved clip, descending tone on stop
 
