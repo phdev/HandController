@@ -143,4 +143,9 @@ actor HomeCenterClient {
     func resetWakeRecordTotals() async -> WakeRecordStatus? {
         await postWakeRecord(["action": "reset_totals"])
     }
+
+    /// Clear all recordings and reset counts. Deletes saved audio files on the Pi.
+    func clearRecordings() async -> WakeRecordStatus? {
+        await postWakeRecord(["action": "clear_recordings"])
+    }
 }

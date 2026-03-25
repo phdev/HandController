@@ -11,6 +11,7 @@ struct WakeRecordView: View {
     @State private var totalNegative = 0
     @State private var pollTimer: Timer?
     @State private var isLoading = false
+    @State private var showClearConfirmation = false
 
     var body: some View {
         NavigationStack {
@@ -34,7 +35,14 @@ struct WakeRecordView: View {
                     Button("Done") { dismiss() }
                 }
             }
+            .onAppear { fetchStatus() }
             .onDisappear { stopPolling() }
+            .alert("Clear All Recordings?", isPresented: $showClearConfirmation) {
+                Button("Clear", role: .destructive) { clearRecordings() }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("This will reset all counters and delete saved audio files on the Pi. This cannot be undone.")
+            }
         }
     }
 
@@ -137,11 +145,20 @@ struct WakeRecordView: View {
                 totalGauge(label: "Negative", count: totalNegative, color: .orange)
             }
 
-            Button(role: .destructive) {
-                resetTotals()
-            } label: {
-                Label("Reset Totals", systemImage: "arrow.counterclockwise")
-                    .font(.caption)
+            HStack(spacing: 16) {
+                Button {
+                    resetTotals()
+                } label: {
+                    Label("Reset Totals", systemImage: "arrow.counterclockwise")
+                        .font(.caption)
+                }
+
+                Button(role: .destructive) {
+                    showClearConfirmation = true
+                } label: {
+                    Label("Clear Recordings", systemImage: "trash")
+                        .font(.caption)
+                }
             }
         }
         .padding()
@@ -202,9 +219,25 @@ struct WakeRecordView: View {
         }
     }
 
+    private func fetchStatus() {
+        Task {
+            if let status = await client.getWakeRecordStatus() {
+                await MainActor.run { applyStatus(status) }
+            }
+        }
+    }
+
     private func resetTotals() {
         Task {
             if let status = await client.resetWakeRecordTotals() {
+                await MainActor.run { applyStatus(status) }
+            }
+        }
+    }
+
+    private func clearRecordings() {
+        Task {
+            if let status = await client.clearRecordings() {
                 await MainActor.run { applyStatus(status) }
             }
         }
