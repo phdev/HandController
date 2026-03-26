@@ -12,6 +12,8 @@ struct WakeRecordView: View {
     @State private var pollTimer: Timer?
     @State private var isLoading = false
     @State private var showClearConfirmation = false
+    @State private var showDebugLog = false
+    @ObservedObject private var debugLog = WakeRecordLog.shared
 
     var body: some View {
         NavigationStack {
@@ -25,6 +27,9 @@ struct WakeRecordView: View {
                 }
 
                 totalsCard
+
+                debugLogSection
+
                 Spacer()
             }
             .padding()
@@ -194,6 +199,54 @@ struct WakeRecordView: View {
                     .font(.caption)
             }
         }
+    }
+
+    // MARK: - Debug Log
+
+    private var debugLogSection: some View {
+        VStack(spacing: 8) {
+            Button {
+                showDebugLog.toggle()
+            } label: {
+                HStack {
+                    Label("Network Log", systemImage: "ant.fill")
+                        .font(.caption)
+                    Spacer()
+                    Image(systemName: showDebugLog ? "chevron.up" : "chevron.down")
+                        .font(.caption2)
+                }
+                .foregroundStyle(.secondary)
+            }
+
+            if showDebugLog {
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 2) {
+                            ForEach(Array(debugLog.entries.enumerated()), id: \.offset) { i, entry in
+                                Text(entry)
+                                    .font(.system(.caption2, design: .monospaced))
+                                    .foregroundStyle(entry.contains("FAILED") ? .red : .primary)
+                                    .id(i)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(maxHeight: 150)
+                    .onChange(of: debugLog.entries.count) { _, _ in
+                        if let last = debugLog.entries.indices.last {
+                            proxy.scrollTo(last, anchor: .bottom)
+                        }
+                    }
+                }
+
+                Button("Clear Log") {
+                    debugLog.entries.removeAll()
+                }
+                .font(.caption2)
+            }
+        }
+        .padding()
+        .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 12))
     }
 
     // MARK: - Actions

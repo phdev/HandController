@@ -1,5 +1,21 @@
 import Foundation
 
+/// Observable log for wake-record network debugging. Visible in-app.
+@MainActor
+final class WakeRecordLog: ObservableObject {
+    static let shared = WakeRecordLog()
+    @Published var entries: [String] = []
+
+    func log(_ message: String) {
+        let ts = DateFormatter.localizedString(from: Date(), dateStyle: .none, timeStyle: .medium)
+        let entry = "[\(ts)] \(message)"
+        entries.append(entry)
+        // Keep last 50 entries
+        if entries.count > 50 { entries.removeFirst(entries.count - 50) }
+        print("[WakeRecord] \(message)")
+    }
+}
+
 /// REST API client for posting gesture events to the home-center dashboard.
 ///
 /// Posts notifications to: POST /api/notifications
@@ -119,11 +135,16 @@ actor HomeCenterClient {
     /// GET /status from the Pi.
     func getWakeRecordStatus() async -> WakeRecordStatus? {
         guard let url = URL(string: "\(Self.piBaseURL)/status") else { return nil }
+        await WakeRecordLog.shared.log("GET \(url)")
         do {
             let (data, response) = try await session.data(from: url)
-            guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { return nil }
+            let code = (response as? HTTPURLResponse)?.statusCode ?? -1
+            let body = String(data: data, encoding: .utf8) ?? "(no body)"
+            await WakeRecordLog.shared.log("GET /status → \(code) \(body)")
+            guard code >= 200, code < 300 else { return nil }
             return parseStatus(from: data)
         } catch {
+            await WakeRecordLog.shared.log("GET /status FAILED: \(error.localizedDescription)")
             return nil
         }
     }
@@ -138,11 +159,16 @@ actor HomeCenterClient {
             guard let data = try? JSONSerialization.data(withJSONObject: body) else { return nil }
             request.httpBody = data
         }
+        await WakeRecordLog.shared.log("POST \(url)")
         do {
             let (data, response) = try await session.data(for: request)
-            guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { return nil }
+            let code = (response as? HTTPURLResponse)?.statusCode ?? -1
+            let body = String(data: data, encoding: .utf8) ?? "(no body)"
+            await WakeRecordLog.shared.log("POST \(path) → \(code) \(body)")
+            guard code >= 200, code < 300 else { return nil }
             return parseStatus(from: data)
         } catch {
+            await WakeRecordLog.shared.log("POST \(path) FAILED: \(error.localizedDescription)")
             return nil
         }
     }
