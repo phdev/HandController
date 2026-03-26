@@ -88,23 +88,25 @@ Auth: `Authorization: Bearer <AUTH_TOKEN>` (loaded from git-ignored `Secrets.pli
 
 ## Wake Word Recording
 
-The app includes a wake word sample recording tool (Debug panel → Tools → Record Wake Word Samples) that controls the Pi's recording mode via the worker API:
+The app includes a wake word sample recording tool (Debug panel → Tools → Record Wake Word Samples) that controls the Pi's recording directly via its HTTP server (not the Cloudflare Worker):
 
 ```
-POST /api/wake-record  {"action": "toggle", "type": "positive"}   ← start/stop recording
-POST /api/wake-record  {"action": "status"}                       ← get current state
-POST /api/wake-record  {"action": "reset_totals"}                 ← reset cumulative counts
-POST /api/wake-record  {"action": "clear_recordings"}             ← reset counts + delete audio files on Pi
-→ All actions return: {"active", "type", "count", "totalPositive", "totalNegative"}
+Pi HTTP server: http://homecenter.local:8765
+GET  /status                              → current state
+POST /toggle  {"type": "positive"}        → start/stop recording
+POST /reset                               → zero all counts
+POST /clear                               → zero counts + delete saved audio files
+→ All endpoints return: {"active", "type", "count", "totalPositive", "totalNegative"}
 ```
 
-- Worker response is the single source of truth — no local state tracking or optimistic updates
-- Segmented control sets sample type locally (used in toggle POST, no separate set_type call)
-- Toggle button POSTs toggle, updates all UI from response
-- Polls every 2s while active via POST status; stops when active becomes false
-- On appear, one status poll to initialize UI state
+- Pi response is the single source of truth — no local state tracking or optimistic updates
+- Segmented control sets sample type locally (used in /toggle POST body)
+- Toggle button POSTs /toggle, updates all UI from response
+- Polls every 2s while active via GET /status; stops when active is false
+- On appear, one GET /status to initialize UI state
 - Circular progress gauges show cumulative totals with a goal of 50 each
 - Reset Totals zeroes counters only; Clear Recordings (destructive, with confirmation) also deletes audio
+- Requires NSAllowsLocalNetworking in Info.plist for plain HTTP to local Pi
 - Pi plays ascending chime on start, beep per saved clip, descending tone on stop
 
 ## Key Constants

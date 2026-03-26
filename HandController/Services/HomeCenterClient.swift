@@ -91,7 +91,9 @@ actor HomeCenterClient {
         }
     }
 
-    // MARK: - Wake Word Recording
+    // MARK: - Wake Word Recording (Pi at http://homecenter.local:8765)
+
+    static let piBaseURL = "http://homecenter.local:8765"
 
     struct WakeRecordStatus {
         var active: Bool
@@ -101,51 +103,62 @@ actor HomeCenterClient {
         var totalNegative: Int
     }
 
-    /// POST to /api/wake-record and parse the response into WakeRecordStatus.
-    private func postWakeRecord(_ payload: [String: String]) async -> WakeRecordStatus? {
-        guard let url = URL(string: "\(baseURL)/api/wake-record") else { return nil }
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        if let token = authToken {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-        guard let body = try? JSONSerialization.data(withJSONObject: payload) else { return nil }
-        request.httpBody = body
+    /// Parse a Pi response into WakeRecordStatus.
+    private func parseStatus(from data: Data) -> WakeRecordStatus? {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let active = json["active"] as? Bool,
+              let type = json["type"] as? String,
+              let count = json["count"] as? Int else { return nil }
+        return WakeRecordStatus(
+            active: active, type: type, count: count,
+            totalPositive: json["totalPositive"] as? Int ?? 0,
+            totalNegative: json["totalNegative"] as? Int ?? 0
+        )
+    }
+
+    /// GET /status from the Pi.
+    func getWakeRecordStatus() async -> WakeRecordStatus? {
+        guard let url = URL(string: "\(Self.piBaseURL)/status") else { return nil }
         do {
-            let (data, response) = try await session.data(for: request)
-            guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode),
-                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let active = json["active"] as? Bool,
-                  let type = json["type"] as? String,
-                  let count = json["count"] as? Int else { return nil }
-            return WakeRecordStatus(
-                active: active, type: type, count: count,
-                totalPositive: json["totalPositive"] as? Int ?? 0,
-                totalNegative: json["totalNegative"] as? Int ?? 0
-            )
+            let (data, response) = try await session.data(from: url)
+            guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { return nil }
+            return parseStatus(from: data)
         } catch {
             return nil
         }
     }
 
-    /// Toggle wake word recording on/off. Returns full state from worker.
+    /// POST to a Pi endpoint with optional JSON body. Returns parsed status.
+    private func postPi(_ path: String, body: [String: String]? = nil) async -> WakeRecordStatus? {
+        guard let url = URL(string: "\(Self.piBaseURL)\(path)") else { return nil }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        if let body {
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            guard let data = try? JSONSerialization.data(withJSONObject: body) else { return nil }
+            request.httpBody = data
+        }
+        do {
+            let (data, response) = try await session.data(for: request)
+            guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { return nil }
+            return parseStatus(from: data)
+        } catch {
+            return nil
+        }
+    }
+
+    /// Toggle recording on/off on the Pi.
     func toggleWakeRecord(type: String) async -> WakeRecordStatus? {
-        await postWakeRecord(["action": "toggle", "type": type])
+        await postPi("/toggle", body: ["type": type])
     }
 
-    /// Get current wake word recording status via POST.
-    func getWakeRecordStatus() async -> WakeRecordStatus? {
-        await postWakeRecord(["action": "status"])
-    }
-
-    /// Reset cumulative totals. Returns full state from worker.
+    /// Reset cumulative totals on the Pi.
     func resetWakeRecordTotals() async -> WakeRecordStatus? {
-        await postWakeRecord(["action": "reset_totals"])
+        await postPi("/reset")
     }
 
-    /// Clear all recordings and reset counts. Deletes saved audio files on the Pi.
+    /// Clear all recordings and delete saved audio files on the Pi.
     func clearRecordings() async -> WakeRecordStatus? {
-        await postWakeRecord(["action": "clear_recordings"])
+        await postPi("/clear")
     }
 }

@@ -49,5 +49,12 @@
 	<!-- Photo library (for saving captured photos) -->
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Save photos captured from your glasses.</string>
+
+	<!-- Allow plain HTTP to local network devices (Pi at homecenter.local) -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 </dict>
 </plist>
