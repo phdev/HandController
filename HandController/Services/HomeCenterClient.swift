@@ -109,7 +109,7 @@ actor HomeCenterClient {
 
     // MARK: - Wake Word Recording (Pi at http://homecenter.local:8765)
 
-    static let piBaseURL = "http://homecenter.local:8765"
+    static let piBaseURL = "http://192.168.1.162:8765"
 
     struct WakeRecordStatus {
         var active: Bool
