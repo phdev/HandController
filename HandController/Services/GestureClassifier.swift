@@ -18,7 +18,8 @@ final class GestureClassifier {
     private let thumbSwipeWindowSize = 6
     private let thumbSwipeDirectionRatio: CGFloat = 1.8
 
-    // Track wrist positions per hand for wave detection.
+    // Track middleMCP positions per hand for wave detection.
+    // Using middleMCP instead of wrist because the glasses camera often can't see the wrist.
     // Key is chirality string ("Left" or "Right").
     private var wristHistory: [String: [(position: CGPoint, time: CFAbsoluteTime)]] = [:]
     private var lastWaveTime: [String: CFAbsoluteTime] = [:]
@@ -48,15 +49,13 @@ final class GestureClassifier {
             }
         }
 
-        // Track wrist for wave detection
-        if let wrist = joints[.wrist] {
-            trackWrist(position: wrist, handKey: handKey)
+        // Track middleMCP for wave detection (wrist is often out of frame on glasses camera)
+        if let trackingJoint = joints[.middleMCP] ?? joints[.wrist] {
+            trackWrist(position: trackingJoint, handKey: handKey)
 
             if let wave = detectWave(handKey: handKey) {
                 return wave
             }
-        } else {
-            print("[Wave] \(handKey) NO WRIST JOINT — joints present: \(joints.keys.map { $0.rawValue.rawValue })")
         }
 
         return .none
