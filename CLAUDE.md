@@ -119,6 +119,6 @@ POST /clear                               → zero counts + delete saved audio f
 | Thumb swipe cooldown | 1.0s | `GestureClassifier` |
 | Throttle interval | 2.0s per gesture type | `HomeCenterClient` |
 | Stream resolution | Low | `StreamViewModel` |
-| Frame rate | 15 fps | `StreamViewModel` |
+| Frame rate | 7 fps | `StreamViewModel` |
 | Joint confidence | 0.3 minimum | `HandPoseDetector` |
 | Max event history | 50 events | `StreamViewModel` |

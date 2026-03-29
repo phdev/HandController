@@ -70,7 +70,7 @@ final class StreamViewModel: ObservableObject {
         let config = StreamSessionConfig(
             videoCodec: VideoCodec.raw,
             resolution: StreamingResolution.low,
-            frameRate: 15
+            frameRate: 7
         )
         self.streamSession = StreamSession(streamSessionConfig: config, deviceSelector: deviceSelector)
 
@@ -98,25 +98,16 @@ final class StreamViewModel: ObservableObject {
         frameToken = streamSession.videoFramePublisher.listen { [weak self] videoFrame in
             guard let self else { return }
 
-            // Extract pixel buffer for Vision before dispatching (avoids UIImage→CGImage round-trip)
-            let sampleBuffer = videoFrame.sampleBuffer
-            let displayImage = videoFrame.makeUIImage()
-
-            Task { @MainActor in
-                if let displayImage {
-                    self.currentFrame = displayImage
-                }
-                self.updateFPS()
-            }
-
-            // Skip frame if previous Vision detection hasn't finished
+            // Skip entire frame (including UIImage conversion) if still processing previous
             guard !self._isProcessingFrame else { return }
             self._isProcessingFrame = true
+
+            let sampleBuffer = videoFrame.sampleBuffer
+            let displayImage = videoFrame.makeUIImage()
 
             self.processingQueue.async { [weak self] in
                 guard let self else { return }
 
-                // Use CVPixelBuffer directly — avoids UIImage→CGImage conversion overhead
                 var hands: [DetectedHand] = []
                 if let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) {
                     hands = self.handPoseDetector.detectHands(in: pixelBuffer)
@@ -125,6 +116,10 @@ final class StreamViewModel: ObservableObject {
                 Task { @MainActor [weak self] in
                     guard let self else { return }
                     self._isProcessingFrame = false
+                    if let displayImage {
+                        self.currentFrame = displayImage
+                    }
+                    self.updateFPS()
                     self.detectedHands = hands
                     self.classifyGestures(for: hands)
                 }
