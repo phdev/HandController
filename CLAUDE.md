@@ -69,10 +69,10 @@ Single SPM package: `https://github.com/facebook/meta-wearables-dat-ios` (v0.4.0
 
 ## Home Center Integration
 
-Gesture events are sent as notifications to the Cloudflare Worker at `home-center-api.phhowell.workers.dev`:
+Gesture events are sent directly to the Pi's HTTP server over local WiFi:
 
 ```
-POST /api/notifications
+POST http://192.168.1.162:8765/gesture
 {
   "id": "gesture_a1b2c3d4",
   "type": "gesture",
@@ -84,7 +84,7 @@ POST /api/notifications
 }
 ```
 
-Auth: `Authorization: Bearer <AUTH_TOKEN>` (loaded from git-ignored `Secrets.plist`, same token as worker's `AUTH_TOKEN` secret). Events send automatically on launch. Configure in the debug panel (ladybug icon → Home Center Integration section).
+No auth token needed (local network). Events send automatically on launch. Configure in the debug panel (ladybug icon → Home Center Integration section).
 
 ## Wake Word Recording
 

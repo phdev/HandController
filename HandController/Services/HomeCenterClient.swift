@@ -71,14 +71,11 @@ actor HomeCenterClient {
             return false
         }
 
-        guard let url = URL(string: "\(baseURL)/api/notifications") else { return false }
+        guard let url = URL(string: "\(Self.piBaseURL)/gesture") else { return false }
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        if let token = authToken {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
 
         let payload = event.homeCenterPayload
         guard let body = try? JSONSerialization.data(withJSONObject: payload) else { return false }
@@ -96,9 +93,9 @@ actor HomeCenterClient {
         }
     }
 
-    /// Check connectivity to the home-center API.
+    /// Check connectivity to the Pi.
     func healthCheck() async -> Bool {
-        guard let url = URL(string: "\(baseURL)/api/health") else { return false }
+        guard let url = URL(string: "\(Self.piBaseURL)/status") else { return false }
         do {
             let (_, response) = try await session.data(from: url)
             return (response as? HTTPURLResponse)?.statusCode == 200
