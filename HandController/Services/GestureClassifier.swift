@@ -7,15 +7,18 @@ import CoreGraphics
 /// - Index finger + thumb pinch (spatial proximity)
 /// - Middle finger + thumb pinch (spatial proximity)
 /// - Thumb swipe left/right/up/down (tracked thumb tip movement)
-/// - Wave left/right/up/down (tracked middleMCP movement — wrist is often out of frame on glasses)
+/// - Wave left/right/up/down (centroid of all joints — immune to pinch/finger noise)
 final class GestureClassifier {
     private let pinchThreshold: CGFloat = 0.06
 
-    // Wave detection: track middleMCP (or wrist) over a 1-second window
-    private let waveMinDisplacement: CGFloat = 0.10
+    // Wave detection: track centroid of ALL visible joints.
+    // Pinch moves fingers toward each other — centroid barely shifts.
+    // Wave translates the whole hand — centroid moves a lot.
+    private let waveMinDisplacement: CGFloat = 0.20
     private let waveDirectionRatio: CGFloat = 1.5
-    private let waveCooldown: CFAbsoluteTime = 1.0
-    private var positionHistory: [String: [(position: CGPoint, time: CFAbsoluteTime)]] = [:]
+    private let waveCooldown: CFAbsoluteTime = 1.5
+    private let waveWindowSeconds: CFAbsoluteTime = 0.6
+    private var centroidHistory: [String: [(position: CGPoint, time: CFAbsoluteTime)]] = [:]
     private var lastWaveTime: [String: CFAbsoluteTime] = [:]
 
     // Thumb swipe detection
@@ -31,18 +34,15 @@ final class GestureClassifier {
         let handKey = hand.chirality.rawValue
         let now = CFAbsoluteTimeGetCurrent()
 
-        // Always track positions every frame, regardless of other gestures
-        if let trackingJoint = joints[.middleMCP] ?? joints[.wrist] {
-            appendPosition(trackingJoint, handKey: handKey, now: now)
-        }
+        // Always track centroid and thumb every frame
+        trackCentroid(joints: joints, handKey: handKey, now: now)
         if let thumbTip = joints[.thumbTip] {
             appendThumb(thumbTip, handKey: handKey, now: now)
         }
 
-        // Now check gestures in priority order
-
-        // 1. Pinch (instantaneous)
+        // 1. Pinch (instantaneous) — clear wave history to prevent false waves
         if let pinch = detectPinch(joints: joints) {
+            centroidHistory[handKey] = []
             return pinch
         }
 
@@ -51,7 +51,7 @@ final class GestureClassifier {
             return swipe
         }
 
-        // 3. Wave (temporal)
+        // 3. Wave (temporal, centroid-based)
         if let wave = detectWave(handKey: handKey, now: now) {
             return wave
         }
@@ -61,7 +61,7 @@ final class GestureClassifier {
 
     /// Reset tracking state (e.g., when streaming stops).
     func reset() {
-        positionHistory.removeAll()
+        centroidHistory.removeAll()
         lastWaveTime.removeAll()
         thumbHistory.removeAll()
         lastThumbSwipeTime.removeAll()
@@ -81,20 +81,36 @@ final class GestureClassifier {
         return nil
     }
 
-    // MARK: - Wave Detection
+    // MARK: - Wave Detection (centroid-based)
 
-    private func appendPosition(_ position: CGPoint, handKey: String, now: CFAbsoluteTime) {
-        var history = positionHistory[handKey] ?? []
-        history.append((position: position, time: now))
-        // Keep last 1 second of data
-        history = history.filter { now - $0.time < 1.0 }
-        positionHistory[handKey] = history
+    private func trackCentroid(joints: [VNHumanHandPoseObservation.JointName: CGPoint], handKey: String, now: CFAbsoluteTime) {
+        guard !joints.isEmpty else { return }
+
+        // Average of ALL visible joint positions
+        var sumX: CGFloat = 0
+        var sumY: CGFloat = 0
+        for point in joints.values {
+            sumX += point.x
+            sumY += point.y
+        }
+        let count = CGFloat(joints.count)
+        let centroid = CGPoint(x: sumX / count, y: sumY / count)
+
+        var history = centroidHistory[handKey] ?? []
+        history.append((position: centroid, time: now))
+        // Keep only the wave window
+        history = history.filter { now - $0.time < waveWindowSeconds }
+        centroidHistory[handKey] = history
     }
 
     private func detectWave(handKey: String, now: CFAbsoluteTime) -> HandGesture? {
-        guard let history = positionHistory[handKey], history.count >= 4 else { return nil }
+        guard let history = centroidHistory[handKey], history.count >= 4 else { return nil }
 
         if let last = lastWaveTime[handKey], now - last < waveCooldown { return nil }
+
+        // Need at least 0.2s of data to avoid jitter
+        let timeSpan = history.last!.time - history.first!.time
+        guard timeSpan >= 0.2 else { return nil }
 
         let first = history.first!.position
         let last = history.last!.position
@@ -116,8 +132,8 @@ final class GestureClassifier {
         }
 
         lastWaveTime[handKey] = now
-        positionHistory[handKey] = []
-        print("[Wave] \(handKey) DETECTED: \(gesture.rawValue) dx=\(String(format: "%.3f", dx)) dy=\(String(format: "%.3f", dy))")
+        centroidHistory[handKey] = []
+        print("[Wave] \(handKey) DETECTED: \(gesture.rawValue) dx=\(String(format: "%.3f", dx)) dy=\(String(format: "%.3f", dy)) span=\(String(format: "%.2f", timeSpan))s")
         return gesture
     }
 
