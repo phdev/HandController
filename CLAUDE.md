@@ -8,7 +8,6 @@ iOS app that connects to **Meta Ray-Ban smart glasses** via the [Meta Device Acc
 
 | Gesture | Detection Method |
 |---------|-----------------|
-| Wave Left / Right / Up / Down | Temporal wrist position tracking over ~0.6s window |
 | Thumb Swipe Left / Right / Up / Down | Temporal thumb tip tracking over ~0.5s window (0.08 displacement, 6-frame window) |
 | Index finger + thumb pinch | Spatial proximity (thumb tip to index tip < 0.06 normalized) |
 | Middle finger + thumb pinch | Spatial proximity (thumb tip to middle tip < 0.06 normalized) |
@@ -114,10 +113,6 @@ POST /clear                               → zero counts + delete saved audio f
 | Constant | Value | Location |
 |----------|-------|----------|
 | Pinch threshold | 0.06 (normalized) | `GestureClassifier` |
-| Wave min displacement | 0.10 (normalized) | `GestureClassifier` |
-| Wave window | 8 frames | `GestureClassifier` |
-| Wave direction ratio | 1.5 | `GestureClassifier` |
-| Wave cooldown | 1.0s | `GestureClassifier` |
 | Thumb swipe min displacement | 0.08 (normalized) | `GestureClassifier` |
 | Thumb swipe window | 6 frames | `GestureClassifier` |
 | Thumb swipe direction ratio | 1.8 | `GestureClassifier` |

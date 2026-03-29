@@ -19,10 +19,6 @@ struct DetectedHand: Identifiable {
 // MARK: - Gesture Types
 
 enum HandGesture: String, CaseIterable, Codable {
-    case waveLeft = "Wave Left"
-    case waveRight = "Wave Right"
-    case waveUp = "Wave Up"
-    case waveDown = "Wave Down"
     case thumbSwipeLeft = "Thumb Swipe Left"
     case thumbSwipeRight = "Thumb Swipe Right"
     case thumbSwipeUp = "Thumb Swipe Up"
@@ -33,10 +29,6 @@ enum HandGesture: String, CaseIterable, Codable {
 
     var icon: String {
         switch self {
-        case .waveLeft: return "hand.point.left.fill"
-        case .waveRight: return "hand.point.right.fill"
-        case .waveUp: return "hand.point.up.fill"
-        case .waveDown: return "hand.point.down.fill"
         case .thumbSwipeLeft: return "hand.thumbsdown.fill"
         case .thumbSwipeRight: return "hand.thumbsup.fill"
         case .thumbSwipeUp: return "hand.thumbsup.fill"
@@ -49,10 +41,6 @@ enum HandGesture: String, CaseIterable, Codable {
 
     var emoji: String {
         switch self {
-        case .waveLeft: return "👈"
-        case .waveRight: return "👉"
-        case .waveUp: return "👆"
-        case .waveDown: return "👇"
         case .thumbSwipeLeft: return "👈"
         case .thumbSwipeRight: return "👉"
         case .thumbSwipeUp: return "👍"
@@ -65,10 +53,6 @@ enum HandGesture: String, CaseIterable, Codable {
 
     var color: String {
         switch self {
-        case .waveLeft: return "#FF6B6B"
-        case .waveRight: return "#4ECDC4"
-        case .waveUp: return "#45B7D1"
-        case .waveDown: return "#96CEB4"
         case .thumbSwipeLeft: return "#E74C3C"
         case .thumbSwipeRight: return "#2ECC71"
         case .thumbSwipeUp: return "#3498DB"
