@@ -55,6 +55,8 @@ final class GestureClassifier {
             if let wave = detectWave(handKey: handKey) {
                 return wave
             }
+        } else {
+            print("[Wave] \(handKey) NO WRIST JOINT — joints present: \(joints.keys.map { $0.rawValue.rawValue })")
         }
 
         return .none
