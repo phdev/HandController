@@ -161,6 +161,7 @@ final class GestureClassifier {
         lastWaveTime[handKey] = now
         wristHistory[handKey] = []
 
+        print("[Wave] \(handKey) DETECTED: \(gesture.rawValue)")
         return gesture
     }
 

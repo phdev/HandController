@@ -166,16 +166,34 @@ final class StreamViewModel: ObservableObject {
 
     // MARK: - Gesture Classification
 
+    /// How long a detected gesture chip stays visible on the HUD.
+    private let gestureDisplayDuration: TimeInterval = 1.5
+    private var leftGestureClearTask: Task<Void, Never>?
+    private var rightGestureClearTask: Task<Void, Never>?
+
     private func classifyGestures(for hands: [DetectedHand]) {
         for hand in hands {
             let gesture = gestureClassifier.classify(hand: hand)
-            switch hand.chirality {
-            case .left: leftHandGesture = gesture
-            case .right: rightHandGesture = gesture
-            case .unknown: break
-            }
 
             if gesture != .none {
+                switch hand.chirality {
+                case .left:
+                    leftHandGesture = gesture
+                    leftGestureClearTask?.cancel()
+                    leftGestureClearTask = Task { @MainActor in
+                        try? await Task.sleep(for: .seconds(gestureDisplayDuration))
+                        if !Task.isCancelled { leftHandGesture = .none }
+                    }
+                case .right:
+                    rightHandGesture = gesture
+                    rightGestureClearTask?.cancel()
+                    rightGestureClearTask = Task { @MainActor in
+                        try? await Task.sleep(for: .seconds(gestureDisplayDuration))
+                        if !Task.isCancelled { rightHandGesture = .none }
+                    }
+                case .unknown: break
+                }
+
                 let event = GestureEvent(
                     gesture: gesture,
                     hand: hand.chirality.rawValue,
@@ -187,9 +205,11 @@ final class StreamViewModel: ObservableObject {
 
         // Clear gesture for hands no longer detected
         if !hands.contains(where: { $0.chirality == .left }) {
+            leftGestureClearTask?.cancel()
             leftHandGesture = .none
         }
         if !hands.contains(where: { $0.chirality == .right }) {
+            rightGestureClearTask?.cancel()
             rightHandGesture = .none
         }
     }
