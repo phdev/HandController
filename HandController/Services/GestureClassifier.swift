@@ -133,6 +133,15 @@ final class GestureClassifier {
 
         // Need significant displacement in one dominant axis
         let totalDisplacement = max(absDx, absDy)
+
+        // DEBUG: log wrist displacement every ~0.5s to diagnose wave detection
+        let debugKey = "waveDebug_\(handKey)"
+        let lastDebug = lastWaveTime[debugKey] ?? 0
+        if now - lastDebug > 0.5 {
+            lastWaveTime[debugKey] = now
+            print("[Wave] \(handKey) pts=\(history.count) dx=\(String(format: "%.3f", dx)) dy=\(String(format: "%.3f", dy)) disp=\(String(format: "%.3f", totalDisplacement)) need=\(String(format: "%.3f", waveMinDisplacement))")
+        }
+
         guard totalDisplacement > waveMinDisplacement else { return nil }
 
         // One axis must dominate to distinguish direction
@@ -143,6 +152,7 @@ final class GestureClassifier {
             // In screen coords: y increases downward
             gesture = dy > 0 ? .waveDown : .waveUp
         } else {
+            print("[Wave] \(handKey) REJECTED: ratio too close dx=\(String(format: "%.3f", absDx)) dy=\(String(format: "%.3f", absDy)) ratio=\(String(format: "%.2f", waveDirectionRatio))")
             return nil
         }
 
