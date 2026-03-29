@@ -9,9 +9,9 @@ import CoreGraphics
 /// - Wave left/right/up/down (tracked wrist movement over time)
 final class GestureClassifier {
     private let pinchThreshold: CGFloat = 0.06
-    private let waveMinDisplacement: CGFloat = 0.15
+    private let waveMinDisplacement: CGFloat = 0.10
     private let waveWindowSize = 8
-    private let waveDirectionRatio: CGFloat = 2.0
+    private let waveDirectionRatio: CGFloat = 1.5
 
     // Thumb swipe detection parameters
     private let thumbSwipeMinDisplacement: CGFloat = 0.08

@@ -114,8 +114,9 @@ POST /clear                               → zero counts + delete saved audio f
 | Constant | Value | Location |
 |----------|-------|----------|
 | Pinch threshold | 0.06 (normalized) | `GestureClassifier` |
-| Wave min displacement | 0.15 (normalized) | `GestureClassifier` |
+| Wave min displacement | 0.10 (normalized) | `GestureClassifier` |
 | Wave window | 8 frames | `GestureClassifier` |
+| Wave direction ratio | 1.5 | `GestureClassifier` |
 | Wave cooldown | 1.0s | `GestureClassifier` |
 | Thumb swipe min displacement | 0.08 (normalized) | `GestureClassifier` |
 | Thumb swipe window | 6 frames | `GestureClassifier` |
