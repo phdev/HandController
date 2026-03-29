@@ -6,35 +6,41 @@ import CoreGraphics
 /// Detects:
 /// - Index finger + thumb pinch (spatial proximity)
 /// - Middle finger + thumb pinch (spatial proximity)
-/// - Thumb swipe left/right/up/down (thumb tip crosses over index knuckle)
+/// - Thumb swipe left/right/up/down (relative thumb-to-knuckle offset change over time)
 final class GestureClassifier {
     private let pinchThreshold: CGFloat = 0.06
 
-    // Thumb swipe: detect when thumb tip crosses the index knuckle (indexMCP).
-    // The thumb must be at least `swipeDeadZone` away from the knuckle on a given
-    // axis before we commit to a side. This prevents jitter near the boundary.
-    private let thumbSwipeCooldown: CFAbsoluteTime = 1.0
-    private let swipeDeadZone: CGFloat = 0.03  // must be this far from knuckle to commit
-    private var committedSide: [String: ThumbSide] = [:]
+    // Thumb swipe: track the relative offset of thumbTip from indexMCP over time.
+    // This is immune to overall hand movement — only the thumb's motion relative
+    // to the hand matters. Detect when the offset changes significantly.
+    private let swipeMinDelta: CGFloat = 0.06
+    private let swipeDirectionRatio: CGFloat = 1.5
+    private let swipeCooldown: CFAbsoluteTime = 1.0
+    private let swipeWindowSeconds: CFAbsoluteTime = 0.5
+    private var offsetHistory: [String: [(offset: CGPoint, time: CFAbsoluteTime)]] = [:]
     private var lastSwipeTime: [String: CFAbsoluteTime] = [:]
-
-    private struct ThumbSide: Equatable {
-        var xSide: Int  // -1 = left of indexMCP, 0 = in dead zone, +1 = right
-        var ySide: Int  // -1 = above indexMCP, 0 = in dead zone, +1 = below
-    }
 
     /// Classify the gesture for a single detected hand.
     func classify(hand: DetectedHand) -> HandGesture {
         let joints = hand.joints
         let handKey = hand.chirality.rawValue
+        let now = CFAbsoluteTimeGetCurrent()
+
+        // Always track thumb offset every frame
+        if let thumbTip = joints[.thumbTip], let indexMCP = joints[.indexMCP] {
+            let offset = CGPoint(x: thumbTip.x - indexMCP.x, y: thumbTip.y - indexMCP.y)
+            appendOffset(offset, handKey: handKey, now: now)
+        }
 
         // 1. Pinch (instantaneous)
         if let pinch = detectPinch(joints: joints) {
+            // Clear swipe history so pinch motion doesn't trigger a false swipe
+            offsetHistory[handKey] = []
             return pinch
         }
 
-        // 2. Thumb swipe (thumb tip crosses index knuckle)
-        if let swipe = detectThumbSwipe(joints: joints, handKey: handKey) {
+        // 2. Thumb swipe (relative offset change)
+        if let swipe = detectThumbSwipe(handKey: handKey, now: now) {
             return swipe
         }
 
@@ -43,7 +49,7 @@ final class GestureClassifier {
 
     /// Reset tracking state (e.g., when streaming stops).
     func reset() {
-        committedSide.removeAll()
+        offsetHistory.removeAll()
         lastSwipeTime.removeAll()
     }
 
@@ -61,58 +67,43 @@ final class GestureClassifier {
         return nil
     }
 
-    // MARK: - Thumb Swipe Detection (crossing-based)
+    // MARK: - Thumb Swipe Detection (relative offset tracking)
 
-    private func detectThumbSwipe(joints: [VNHumanHandPoseObservation.JointName: CGPoint], handKey: String) -> HandGesture? {
-        guard let thumbTip = joints[.thumbTip],
-              let indexMCP = joints[.indexMCP] else { return nil }
+    private func appendOffset(_ offset: CGPoint, handKey: String, now: CFAbsoluteTime) {
+        var history = offsetHistory[handKey] ?? []
+        history.append((offset: offset, time: now))
+        history = history.filter { now - $0.time < swipeWindowSeconds }
+        offsetHistory[handKey] = history
+    }
 
-        let now = CFAbsoluteTimeGetCurrent()
-        let dx = thumbTip.x - indexMCP.x
-        let dy = thumbTip.y - indexMCP.y
+    private func detectThumbSwipe(handKey: String, now: CFAbsoluteTime) -> HandGesture? {
+        guard let history = offsetHistory[handKey], history.count >= 3 else { return nil }
 
-        // Compute current side per axis (0 = in dead zone, won't trigger a crossing)
-        let currentX: Int = abs(dx) > swipeDeadZone ? (dx > 0 ? 1 : -1) : 0
-        let currentY: Int = abs(dy) > swipeDeadZone ? (dy > 0 ? 1 : -1) : 0
+        if let last = lastSwipeTime[handKey], now - last < swipeCooldown { return nil }
 
-        guard let prev = committedSide[handKey] else {
-            committedSide[handKey] = ThumbSide(xSide: currentX, ySide: currentY)
-            return nil
-        }
+        // Compare earliest and latest offset in the window
+        let first = history.first!.offset
+        let last = history.last!.offset
+        let dx = last.x - first.x  // how much thumb moved relative to knuckle (x)
+        let dy = last.y - first.y  // how much thumb moved relative to knuckle (y)
+        let absDx = abs(dx)
+        let absDy = abs(dy)
+        let disp = max(absDx, absDy)
 
-        // Only update committed side when thumb is outside dead zone on that axis
-        var updated = prev
-        if currentX != 0 { updated.xSide = currentX }
-        if currentY != 0 { updated.ySide = currentY }
-        committedSide[handKey] = updated
+        guard disp > swipeMinDelta else { return nil }
 
-        // Cooldown
-        if let last = lastSwipeTime[handKey], now - last < thumbSwipeCooldown {
-            return nil
-        }
-
-        // Detect crossing: prev committed side must be nonzero and different from current
-        let xCrossed = prev.xSide != 0 && currentX != 0 && prev.xSide != currentX
-        let yCrossed = prev.ySide != 0 && currentY != 0 && prev.ySide != currentY
-
-        let gesture: HandGesture?
-        if xCrossed && yCrossed {
-            // Both axes crossed — pick the one with larger offset (more intentional)
-            if abs(dx) > abs(dy) {
-                gesture = currentX > 0 ? .thumbSwipeRight : .thumbSwipeLeft
-            } else {
-                gesture = currentY > 0 ? .thumbSwipeDown : .thumbSwipeUp
-            }
-        } else if xCrossed {
-            gesture = currentX > 0 ? .thumbSwipeRight : .thumbSwipeLeft
-        } else if yCrossed {
-            gesture = currentY > 0 ? .thumbSwipeDown : .thumbSwipeUp
+        let gesture: HandGesture
+        if absDx > absDy * swipeDirectionRatio {
+            gesture = dx > 0 ? .thumbSwipeRight : .thumbSwipeLeft
+        } else if absDy > absDx * swipeDirectionRatio {
+            gesture = dy > 0 ? .thumbSwipeDown : .thumbSwipeUp
         } else {
             return nil
         }
 
         lastSwipeTime[handKey] = now
-        print("[ThumbSwipe] \(handKey) DETECTED: \(gesture!.rawValue) dx=\(String(format: "%.3f", dx)) dy=\(String(format: "%.3f", dy))")
+        offsetHistory[handKey] = []
+        print("[ThumbSwipe] \(handKey) DETECTED: \(gesture.rawValue) dx=\(String(format: "%.3f", dx)) dy=\(String(format: "%.3f", dy))")
         return gesture
     }
 
