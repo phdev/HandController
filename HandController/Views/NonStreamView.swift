@@ -5,6 +5,7 @@ struct NonStreamView: View {
     @ObservedObject var streamVM: StreamViewModel
     @ObservedObject var wearablesVM: WearablesViewModel
     @State private var showWakeRecord = false
+    @State private var showEnrollments = false
 
     var body: some View {
         VStack(spacing: 32) {
@@ -58,6 +59,19 @@ struct NonStreamView: View {
                 .padding(.horizontal, 40)
 
                 Button {
+                    showEnrollments = true
+                } label: {
+                    Label("Wake Word Training", systemImage: "waveform.badge.plus")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.purple)
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                }
+                .padding(.horizontal, 40)
+
+                Button {
                     wearablesVM.disconnectGlasses()
                 } label: {
                     Text("Disconnect Glasses")
@@ -72,7 +86,7 @@ struct NonStreamView: View {
                 Text("Detected gestures:")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
-                Text("Wave (L/R/Up/Down) | Index Pinch | Middle Pinch")
+                Text("Thumb Swipe (L/R/Up/Down) | Index Pinch | Middle Pinch")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             }
@@ -80,6 +94,9 @@ struct NonStreamView: View {
         }
         .sheet(isPresented: $showWakeRecord) {
             WakeRecordView(client: streamVM.homeCenterClient)
+        }
+        .sheet(isPresented: $showEnrollments) {
+            EnrollmentListView(client: streamVM.homeCenterClient)
         }
     }
 }
