@@ -7,6 +7,7 @@ struct DebugPanelView: View {
     @State private var homeCenterToken = ""
     @State private var healthStatus: HealthStatus = .unknown
     @State private var showWakeRecord = false
+    @State private var showEnrollments = false
     @Environment(\.dismiss) private var dismiss
 
     enum HealthStatus {
@@ -125,6 +126,15 @@ struct DebugPanelView: View {
             }
             .sheet(isPresented: $showWakeRecord) {
                 WakeRecordView(client: streamVM.homeCenterClient)
+            }
+
+            Button {
+                showEnrollments = true
+            } label: {
+                Label("Wake Word Training", systemImage: "waveform.badge.plus")
+            }
+            .sheet(isPresented: $showEnrollments) {
+                EnrollmentListView(client: streamVM.homeCenterClient)
             }
         }
     }

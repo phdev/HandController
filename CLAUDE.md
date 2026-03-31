@@ -42,6 +42,8 @@ Views/
   HandOverlayView.swift              ← Canvas-drawn skeleton (cyan = left, orange = right)
   DebugPanelView.swift               ← Event log, home-center settings, health check, tools
   WakeRecordView.swift               ← Wake word sample recording UI (controls Pi recording via worker API)
+  EnrollmentListView.swift           ← Lists enrolled wake words with delete, entry point for new enrollments
+  EnrollmentFlowView.swift           ← New enrollment flow: name/page setup → recording → success
   MockDeviceMenuView.swift           ← DEBUG-only mock device pairing UI (replaces removed MockDeviceKitView)
 ```
 
@@ -107,6 +109,25 @@ POST /clear                               → zero counts + delete saved audio f
 - Reset Totals zeroes counters only; Clear Recordings (destructive, with confirmation) also deletes audio
 - Requires NSAllowsLocalNetworking in Info.plist for plain HTTP to local Pi
 - Pi plays ascending chime on start, beep per saved clip, descending tone on stop
+
+## Wake Word Enrollment
+
+Custom wake word enrollment for family members (Debug panel → Tools → Wake Word Training):
+
+```
+Pi HTTP server: http://192.168.1.162:8765
+POST /api/enrollments              → start enrollment {name, action, target}
+GET  /api/enrollments              → list all enrolled wake words
+GET  /api/enrollment-status        → poll recording state {state, name, elapsed, buffer_seconds}
+POST /api/enrollments/{name}/delete → delete an enrollment
+POST /api/enrollment-stop          → cancel in-progress enrollment
+```
+
+- States: idle → waiting (listening) → recording (speech detected) → processing (extracting embeddings) → idle (done)
+- Pi microphone does all audio capture — app just triggers and monitors via HTTP
+- Polls every 500ms during recording; auto-completes when Pi returns to idle
+- 10s timeout if stuck in "waiting" with no speech detected
+- Cancel button sends enrollment-stop to abort
 
 ## Key Constants
 

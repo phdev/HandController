@@ -184,4 +184,115 @@ actor HomeCenterClient {
     func clearRecordings() async -> WakeRecordStatus? {
         await postPi("/clear")
     }
+
+    // MARK: - Wake Word Enrollment
+
+    struct Enrollment: Identifiable {
+        let id: String  // name lowercased
+        let name: String
+        let wakePhrase: String
+        let action: String
+        let target: String
+        let nTemplates: Int
+        let sampleDuration: Double
+        let createdAt: Int
+    }
+
+    struct EnrollmentStatus {
+        let state: String   // idle, waiting, recording, processing
+        let name: String
+        let elapsed: Double
+        let bufferSeconds: Double
+    }
+
+    /// GET /api/enrollments — list all enrolled wake words.
+    func getEnrollments() async -> [Enrollment]? {
+        guard let url = URL(string: "\(Self.piBaseURL)/api/enrollments") else { return nil }
+        do {
+            let (data, response) = try await session.data(from: url)
+            guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode),
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let list = json["enrollments"] as? [[String: Any]] else { return nil }
+            return list.compactMap { parseEnrollment($0) }
+        } catch {
+            return nil
+        }
+    }
+
+    /// POST /api/enrollments — start a new enrollment recording.
+    func startEnrollment(name: String, action: String, target: String) async -> Bool {
+        guard let url = URL(string: "\(Self.piBaseURL)/api/enrollments") else { return false }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let payload: [String: String] = ["name": name, "action": action, "target": target]
+        guard let body = try? JSONSerialization.data(withJSONObject: payload) else { return false }
+        request.httpBody = body
+        do {
+            let (_, response) = try await session.data(for: request)
+            return (response as? HTTPURLResponse).map { (200..<300).contains($0.statusCode) } ?? false
+        } catch {
+            return false
+        }
+    }
+
+    /// GET /api/enrollment-status — poll enrollment recording state.
+    func getEnrollmentStatus() async -> EnrollmentStatus? {
+        guard let url = URL(string: "\(Self.piBaseURL)/api/enrollment-status") else { return nil }
+        do {
+            let (data, response) = try await session.data(from: url)
+            guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode),
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let state = json["state"] as? String else { return nil }
+            return EnrollmentStatus(
+                state: state,
+                name: json["name"] as? String ?? "",
+                elapsed: json["elapsed"] as? Double ?? 0,
+                bufferSeconds: json["buffer_seconds"] as? Double ?? 0
+            )
+        } catch {
+            return nil
+        }
+    }
+
+    /// POST /api/enrollments/{name}/delete — delete an enrollment.
+    func deleteEnrollment(name: String) async -> Bool {
+        let encoded = name.lowercased().addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? name.lowercased()
+        guard let url = URL(string: "\(Self.piBaseURL)/api/enrollments/\(encoded)/delete") else { return false }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        do {
+            let (_, response) = try await session.data(for: request)
+            return (response as? HTTPURLResponse).map { (200..<300).contains($0.statusCode) } ?? false
+        } catch {
+            return false
+        }
+    }
+
+    /// POST /api/enrollment-stop — cancel an in-progress enrollment.
+    func stopEnrollment() async -> Bool {
+        guard let url = URL(string: "\(Self.piBaseURL)/api/enrollment-stop") else { return false }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        do {
+            let (_, response) = try await session.data(for: request)
+            return (response as? HTTPURLResponse).map { (200..<300).contains($0.statusCode) } ?? false
+        } catch {
+            return false
+        }
+    }
+
+    private func parseEnrollment(_ json: [String: Any]) -> Enrollment? {
+        guard let name = json["name"] as? String else { return nil }
+        return Enrollment(
+            id: name.lowercased(),
+            name: name,
+            wakePhrase: json["wake_phrase"] as? String ?? "",
+            action: json["action"] as? String ?? "",
+            target: json["target"] as? String ?? "",
+            nTemplates: json["n_templates"] as? Int ?? 0,
+            sampleDuration: json["sample_duration"] as? Double ?? 0,
+            createdAt: json["created_at"] as? Int ?? 0
+        )
+    }
 }
